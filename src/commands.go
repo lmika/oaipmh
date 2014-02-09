@@ -6,6 +6,7 @@ import (
     "os"
     "flag"
     "time"
+    "strings"
 )
 
 
@@ -16,6 +17,10 @@ const DateFormat string = "2006-01-02"
 
 type Context struct {
     Session         *OaipmhSession
+    Config          *Config
+
+    // Set to the provider is one is used instead of a raw URL
+    Provider        *Provider
 }
 
 // ---------------------------------------------------------------------------------------------------
@@ -23,15 +28,29 @@ type Context struct {
 
 type SetsCommand struct {
     Ctx             *Context
+    flagDetailed    *bool
 }
 
 func (lc *SetsCommand) Flags(fs *flag.FlagSet) *flag.FlagSet {
+    lc.flagDetailed = fs.Bool("l", false, "List sets in detail.")
     return fs
 }
 
 func (lc *SetsCommand) Run(args []string) {
     lc.Ctx.Session.ListSets(0, -1, func(res ListSetResult) bool {
-        fmt.Printf("%s\n", res.Spec)
+        if (*(lc.flagDetailed)) {
+            fmt.Printf("Name: %s\nSpec: %s\n", res.Spec, res.Name)
+            descrLines := strings.Split(res.Description, "\n")
+            for _, v := range descrLines {
+                v = strings.Trim(v, " \n\t")
+                if (v != "") {
+                    fmt.Printf("    %s\n", v)
+                }
+            }
+            fmt.Println("---")
+        } else {
+            fmt.Printf("%s\n", res.Name)
+        }
         return true
     })
 }
@@ -74,8 +93,13 @@ func parseDateString(dateString string) *time.Time {
 
 // Get list identifier arguments
 func (lc *ListCommand) genListIdentifierArgsFromCommandLine() ListIdentifierArgs {
+    set := *(lc.setName)
+    if (set == "") {
+        set = lc.Ctx.Provider.Set
+    }
+
     args := ListIdentifierArgs{
-        Set: *(lc.setName),
+        Set: set,
         From: parseDateString(*(lc.afterDate)),
         Until: parseDateString(*(lc.beforeDate)),
     }
@@ -123,7 +147,7 @@ func (lc *ListCommand) listIdentifiersInDetail() {
 
 func (lc *ListCommand) Flags(fs *flag.FlagSet) *flag.FlagSet {
     lc.setName = fs.String("s", "", "The set to retrieve")
-    lc.beforeDate = fs.String("B", "", "List metadata records that have been updated since this date (YYYY-MM-DD).")
+    lc.beforeDate = fs.String("B", "", "List metadata records that have been updated before this date (YYYY-MM-DD).")
     lc.afterDate = fs.String("A", "", "List metadata records that have been updated after this date (YYYY-MM-DD).")
     lc.flagDetailed = fs.Bool("l", false, "List metadata in detail.")
     lc.firstResult = fs.Int("f", 0, "The first result to return.")

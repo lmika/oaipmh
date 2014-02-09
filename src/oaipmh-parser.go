@@ -37,6 +37,7 @@ type ListIdentifierResult struct {
 type ListSetResult struct {
     Spec            string
     Name            string
+    Description     string
 }
 
 
@@ -47,28 +48,26 @@ type ListSetResult struct {
 type OaipmhSession struct {
     url         string
     prefix      string
-    urlTraceFn  func(string)
+    traceFn     func(string)
 }
 
 // Creates a new OaipmhSession
 func NewOaipmhSession(url, prefix string) *OaipmhSession {
-    return &OaipmhSession{url, prefix, nil}
+    return &OaipmhSession{url, prefix, func(string) { }}
 }
 
 // Sets the function to call when fetching a URL
 func (op *OaipmhSession) SetUrlTraceFunction(fn func(string)) {
-    op.urlTraceFn = fn
+    op.traceFn = fn
 }
 
 // Gets a request from the OAI-PMH provider and returns it as a string, or an error
 func (op *OaipmhSession) request(verb string, args url.Values) ([]byte, error) {
     args.Add("verb", verb)
 
-    if (op.urlTraceFn != nil) {
-        traceUrl := op.url + "?" + args.Encode()
-        op.urlTraceFn(traceUrl)
-    }
-    
+    traceUrl := op.url + "?" + args.Encode()
+    op.traceFn("GET " + traceUrl)
+
     resp, err := http.PostForm(op.url, args)
     if err != nil {
         return nil, err
@@ -103,6 +102,7 @@ func (op *OaipmhSession) runXPath(doc xml.Document, expr string) []xml.Node {
     xpath := xpath.NewXPath(doc.DocPtr())
     xpath.RegisterNamespace("o", "http://www.openarchives.org/OAI/2.0/")
     xpath.RegisterNamespace("gmd", "http://www.isotc211.org/2005/gmd")
+    xpath.RegisterNamespace("dc", "http://www.openarchives.org/OAI/2.0/oai_dc/")
 
     resultNodes, err := xpath.Evaluate(doc.Root().NodePtr(), xpathExpr)
     if err != nil {
@@ -213,8 +213,9 @@ func (op *OaipmhSession) ListSets(firstResult int, maxResults int, callback func
     op.requestXmlList("ListSets", args, xpath, firstResult, maxResults, func(node xml.Node) bool {
         spec := op.safeNodeContents(op.findChild(node, "setSpec"))
         name := op.safeNodeContents(op.findChild(node, "setName"))
+        descr := op.safeNodeContents(op.findChild(node, "setDescription"))
 
-        return callback(ListSetResult{spec, name})
+        return callback(ListSetResult{spec, name, descr})
     })
 }
 
@@ -244,6 +245,7 @@ func (op *OaipmhSession) GetRecordHeader(id string) [][]string {
     res := make([][]string, len(headerNodes))
 
     for i, h := range(headerNodes) {
+        op.traceFn("headerNode: " + h.String())
         res[i] = []string { h.Name(), h.Content() }
     }
 

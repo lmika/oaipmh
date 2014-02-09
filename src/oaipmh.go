@@ -17,6 +17,7 @@ import (
 // Flags
 var prefix *string = flag.String("p", "iso19139", "The prefix")
 var debug *bool = flag.Bool("d", false, "Enable debugging")
+var listProvidersFlag *bool = flag.Bool("P", false, "List providers and exit")
 
 
 // Die with an error message
@@ -25,8 +26,17 @@ func die(msg string) {
     os.Exit(1)
 }
 
+// List the configured set of providers
+func listProviders(ctx *Context) {
+    for name, pconfig := range ctx.Config.Provider {
+        fmt.Printf("%s = %s\n", name, pconfig.Url)
+    }
+}
+
 func main() {
-    ctx := &Context{}
+    ctx := &Context{
+        Config: ReadConfig(),
+    }
 
     command.On("sets", "List sets", &SetsCommand{
         Ctx: ctx,
@@ -41,14 +51,26 @@ func main() {
     providerUrl := command.PreArg("provider", "URL to the OAI-PMH provider")
 
     // Parse the command
-    command.Parse()
+    res := command.TryParse()
+    if (res != command.TryParseOK) {
+
+        // Handle flags which do not require a command
+        if (*listProvidersFlag) {
+            listProviders(ctx)
+            os.Exit(0)
+        } else {
+            command.Usage()
+            os.Exit(1)
+        }
+    }
 
     // Create the OAI-PMH session
-    ctx.Session = NewOaipmhSession(*providerUrl, *prefix)
+    ctx.Provider = ctx.Config.LookupProvider(*providerUrl)
+    ctx.Session = NewOaipmhSession(ctx.Provider.Url, *prefix)
 
     if (*debug) {
         ctx.Session.SetUrlTraceFunction(func(url string) {
-            fmt.Fprintf(os.Stderr, ">> %s\n", url)
+            fmt.Fprintf(os.Stderr, "[debug] %s\n", url)
         })
     }
 
