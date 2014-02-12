@@ -36,6 +36,7 @@ func listProviders(ctx *Context) {
 func main() {
     ctx := &Context{
         Config: ReadConfig(),
+        LogMsg: func(msg string) { },
     }
 
     command.On("sets", "List sets", &SetsCommand{
@@ -45,6 +46,9 @@ func main() {
         Ctx: ctx,
     })
     command.On("get", "Get records", &GetCommand{
+        Ctx: ctx,
+    })
+    command.On("harvest", "Harvest records and save them as files", &HarvestCommand{
         Ctx: ctx,
     })
 
@@ -72,6 +76,9 @@ func main() {
         ctx.Session.SetUrlTraceFunction(func(url string) {
             fmt.Fprintf(os.Stderr, "[debug] %s\n", url)
         })
+        ctx.LogMsg = func(msg string) {
+            fmt.Fprintf(os.Stderr, "[debug] %s\n", msg)
+        }
     }
 
     // Run the command
