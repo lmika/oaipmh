@@ -10,6 +10,7 @@ import (
     "flag"
     "fmt"
     "os"
+    "log"
 
     "github.com/lmika/command"
 )
@@ -36,7 +37,6 @@ func listProviders(ctx *Context) {
 func main() {
     ctx := &Context{
         Config: ReadConfig(),
-        LogMsg: func(msg string) { },
     }
 
     command.On("sets", "List sets", &SetsCommand{
@@ -73,12 +73,10 @@ func main() {
     ctx.Session = NewOaipmhSession(ctx.Provider.Url, *prefix)
 
     if (*debug) {
+        ctx.Debug = true
         ctx.Session.SetUrlTraceFunction(func(url string) {
-            fmt.Fprintf(os.Stderr, "[debug] %s\n", url)
+            log.Printf("%s\n", url)
         })
-        ctx.LogMsg = func(msg string) {
-            fmt.Fprintf(os.Stderr, "[debug] %s\n", msg)
-        }
     }
 
     // Run the command

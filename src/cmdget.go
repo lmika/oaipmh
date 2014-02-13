@@ -5,6 +5,7 @@ import (
     "fmt"
     "os"
     "flag"
+    "log"
 )
 
 
@@ -65,16 +66,24 @@ func (gc *GetCommand) displayRecord(id string) {
     }
 
     if *(gc.wholeResponse) {
-        fmt.Println(gc.Ctx.Session.GetRecordPayload(id))
+        payload, err := gc.Ctx.Session.GetRecordPayload(id)
+        if (err == nil) {
+            fmt.Println(payload)
+        } else {
+            log.Printf("Error: Cannot get record '%s', %s", id, err.Error())
+        }
     } else {
-        resp := gc.Ctx.Session.GetRecord(id)
-
-        if *(gc.header) {
-            for _, header := range resp.Header {
-                fmt.Printf("%s: %s\n", header[0], header[1])
+        resp, err := gc.Ctx.Session.GetRecord(id)
+        if (err == nil) {
+            if *(gc.header) {
+                for _, header := range resp.Header {
+                    fmt.Printf("%s: %s\n", header[0], header[1])
+                }
+            } else {
+                fmt.Print(resp.Content)
             }
         } else {
-            fmt.Print(resp.Content)
+            log.Printf("Error: Cannot get record '%s', %s", id, err.Error())
         }
     }
     gc.count++

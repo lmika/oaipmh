@@ -98,18 +98,18 @@ func (op *OaipmhSession) request(verb string, args url.Values) ([]byte, error) {
 }
 
 // Like request but returns the result as an XML document
-func (op *OaipmhSession) requestXml(verb string, args url.Values) xml.Document {
+func (op *OaipmhSession) requestXml(verb string, args url.Values) (xml.Document, error) {
     resp, err := op.request(verb, args)
     if err != nil {
-        panic(err.Error())
+        return nil, err
     }
 
     doc, err := gokogiri.ParseXml(resp)
     if err != nil {
-        panic(err.Error())
+        return nil, err
     }
 
-    return doc
+    return doc, nil
 }
 
 // Runs an XPath.  Returns a slice of nodes.
@@ -168,6 +168,15 @@ func (op *OaipmhSession) findChild(node xml.Node, name string) xml.Node {
     }
     return nil
 }
+// Searches for the first child element
+func (op *OaipmhSession) findFirstElement(node xml.Node) xml.Node {
+    for n := node.FirstChild(); n != nil; n = n.NextSibling() {
+        if (n.NodeType() == xml.XML_ELEMENT_NODE) {
+            return n
+        }
+    }
+    return nil
+}
 
 // Runs a function over each children with a specific name
 func (op *OaipmhSession) eachChildOfName(node xml.Node, name string, fn func(child xml.Node)) {
@@ -189,13 +198,16 @@ func (op *OaipmhSession) safeNodeContents(node xml.Node) string {
 
 // Performs a list request.  This retrieves a list of items and returns each item matching the XPath expression.
 // If a resumption token is present, and the callback continues to return true, the next set of items is retrieved.
-func (op *OaipmhSession) requestXmlList(verb string, args url.Values, xpath string, firstResult int, maxResults int, callback func(node xml.Node) bool) {
+func (op *OaipmhSession) requestXmlList(verb string, args url.Values, xpath string, firstResult int, maxResults int, callback func(node xml.Node) bool) error {
 
     var resultCount int = 0
 
     for {
         // Make the request
-        doc := op.requestXml(verb, args)
+        doc, err := op.requestXml(verb, args)
+        if err != nil {
+            return err
+        }
 
         // Extract the nodes
         nodes := op.runXPath(doc, xpath)
@@ -204,13 +216,13 @@ func (op *OaipmhSession) requestXmlList(verb string, args url.Values, xpath stri
         for _, n := range nodes {
             if (resultCount >= firstResult) {
                 if (! callback(n)) {
-                    return
+                    return nil
                 }
             }
             resultCount++
             if ((resultCount >= firstResult + maxResults) && (maxResults != -1)) {
                 fmt.Fprintf(os.Stderr, "Maximum number of results encountered (%d).  Use -c to change.\n", maxResults)
-                return
+                return nil
             }
         }
 
@@ -221,14 +233,14 @@ func (op *OaipmhSession) requestXmlList(verb string, args url.Values, xpath stri
                 "resumptionToken": {op.safeNodeContents(res[0])},
             }
         } else {
-            return
+            return nil
         }
     }
 }
 
 
 // Returns a list of identifiers
-func (op *OaipmhSession) ListIdentifiers(listArgs ListIdentifierArgs, firstResult int, maxResults int, callback func(res ListIdentifierResult) bool) {
+func (op *OaipmhSession) ListIdentifiers(listArgs ListIdentifierArgs, firstResult int, maxResults int, callback func(res ListIdentifierResult) bool) error {
     args := url.Values {
         "metadataPrefix":   {op.prefix},
     }
@@ -246,7 +258,7 @@ func (op *OaipmhSession) ListIdentifiers(listArgs ListIdentifierArgs, firstResul
         args.Set("set", listArgs.Set)
     }
 
-    op.requestXmlList("ListIdentifiers", args, xpath, firstResult, maxResults, func(node xml.Node) bool {
+    return op.requestXmlList("ListIdentifiers", args, xpath, firstResult, maxResults, func(node xml.Node) bool {
         id := op.safeNodeContents(op.findChild(node, "identifier"))
         dateStamp := op.safeNodeContents(op.findChild(node, "datestamp"))
         isDeleted := (node.Attr("status") == "deleted")
@@ -260,7 +272,7 @@ func (op *OaipmhSession) ListIdentifiers(listArgs ListIdentifierArgs, firstResul
 }
 
 // Returns a list of records
-func (op *OaipmhSession) ListRecords(listArgs ListIdentifierArgs, firstResult int, maxResults int, callback func(recordResult *RecordResult) bool) {
+func (op *OaipmhSession) ListRecords(listArgs ListIdentifierArgs, firstResult int, maxResults int, callback func(recordResult *RecordResult) bool) error {
     args := url.Values {
         "metadataPrefix":   {op.prefix},
     }
@@ -278,18 +290,18 @@ func (op *OaipmhSession) ListRecords(listArgs ListIdentifierArgs, firstResult in
         args.Set("set", listArgs.Set)
     }
 
-    op.requestXmlList("ListRecords", args, xpath, firstResult, maxResults, func(node xml.Node) bool {
+    return op.requestXmlList("ListRecords", args, xpath, firstResult, maxResults, func(node xml.Node) bool {
         recordResult := op.getHeaderAndMetadata(node)
         return callback(recordResult)
     })
 }
 
 // Lists the sets provided by this provider
-func (op *OaipmhSession) ListSets(firstResult int, maxResults int, callback func(ListSetResult) bool) {
+func (op *OaipmhSession) ListSets(firstResult int, maxResults int, callback func(ListSetResult) bool) error {
     args := url.Values {}
     xpath := "/o:OAI-PMH/o:ListSets/o:set"
 
-    op.requestXmlList("ListSets", args, xpath, firstResult, maxResults, func(node xml.Node) bool {
+    return op.requestXmlList("ListSets", args, xpath, firstResult, maxResults, func(node xml.Node) bool {
         spec := op.safeNodeContents(op.findChild(node, "setSpec"))
         name := op.safeNodeContents(op.findChild(node, "setName"))
         descr := op.safeNodeContents(op.findChild(node, "setDescription"))
@@ -316,7 +328,11 @@ func (op *OaipmhSession) getHeaderAndMetadata(recordNode xml.Node) *RecordResult
     var metadataContent string
     metadataNode := op.findChild(recordNode, "metadata")
     if (metadataNode != nil) {
-        metadataContent = metadataNode.String()
+        // metadataContent = metadataNode.FirstChild().String()
+        bufr := new(bytes.Buffer)
+        bufr.WriteString("<?xml version=\"1.0\"?>\n")
+        bufr.WriteString(op.findFirstElement(metadataNode).String())
+        metadataContent = bufr.String()
     } else {
         metadataContent = ""
     }
@@ -325,30 +341,36 @@ func (op *OaipmhSession) getHeaderAndMetadata(recordNode xml.Node) *RecordResult
 }
 
 // Returns the record header as an array of string pairs
-func (op *OaipmhSession) GetRecord(id string) *RecordResult {
+func (op *OaipmhSession) GetRecord(id string) (*RecordResult, error) {
     args := url.Values{
         "metadataPrefix":   {op.prefix},
         "identifier":       {id},
     }
 
-    doc := op.requestXml("GetRecord", args)
+    doc, err := op.requestXml("GetRecord", args)
+    if (err != nil) {
+        return nil, err
+    }
 
     // Parse the XML document
     recordNode := op.runXPathSingle(doc.Root(), "/o:OAI-PMH/o:GetRecord/o:record")
-    return op.getHeaderAndMetadata(recordNode)
+    return op.getHeaderAndMetadata(recordNode), nil
 }
 
 // Returns the record payload as a string
-func (op *OaipmhSession) GetRecordPayload(id string) string {
+func (op *OaipmhSession) GetRecordPayload(id string) (string, error) {
     args := url.Values{
         "metadataPrefix":   {op.prefix},
         "identifier":       {id},
     }
 
-    doc := op.requestXml("GetRecord", args)
+    doc, err := op.requestXml("GetRecord", args)
+    if (err != nil) {
+        return "", err
+    }
 
     // Parse the XML document
     recordNode := op.runXPathSingle(doc.Root(), "/o:OAI-PMH/o:GetRecord/o:record")
 
-    return recordNode.String()
+    return recordNode.String(), nil
 }

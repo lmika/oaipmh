@@ -4,8 +4,11 @@ package main
 import (
     "fmt"
     "os"
+    "os/exec"
+    "path"
     "flag"
     "time"
+    "log"
 )
 
 
@@ -17,6 +20,7 @@ type HarvestCommand struct {
     Ctx                 *Context
     dryRun              *bool
     listAndGet          *bool
+    compressDirs        *bool
     setName             *string
     beforeDate          *string
     afterDate           *string
@@ -29,6 +33,7 @@ type HarvestCommand struct {
     dirPrefix           string
     recordCount         int
     deletedCount        int
+    lastDirId           int
 }
 
 // Get list identifier arguments
@@ -47,10 +52,15 @@ func (lc *HarvestCommand) genListIdentifierArgsFromCommandLine() ListIdentifierA
     return args
 }
 
+// Returns the name of directory given the directory ID
+func (lc *HarvestCommand) dirName(dirId int) string {
+    return fmt.Sprintf("%s/%02d", lc.dirPrefix, dirId)
+}
+
 // Saves the record
 func (lc *HarvestCommand) saveRecord(dirId int, res *RecordResult) {
     id := res.Identifier()
-    dir := fmt.Sprintf("%s/%02d", lc.dirPrefix, dirId)
+    dir := lc.dirName(dirId)
     outFile := fmt.Sprintf("%s/%s.xml", dir, id)
 
     os.MkdirAll(dir, 0755)
@@ -61,8 +71,27 @@ func (lc *HarvestCommand) saveRecord(dirId int, res *RecordResult) {
     }
     defer file.Close()
 
-    file.WriteString("<?xml version=\"1.0\"?>\n")
     file.WriteString(res.Content)
+}
+
+// Close the current directory before creating and writing to a new one
+func (lc *HarvestCommand) closeDir(dirId int) {
+    dir := lc.dirName(dirId)
+    if *(lc.compressDirs) {
+        base := path.Base(dir)
+        parent := path.Dir(dir)
+
+        if (lc.Ctx.Debug) {
+            log.Printf("Compressing %s -> %s", base, dir + ".zip")
+        }
+
+        cmd := exec.Command("zip", "-m", "-r", base + ".zip", base)
+        cmd.Dir = parent
+        err := cmd.Start()
+        if (err != nil) {
+            fmt.Fprintf(os.Stderr, "Cannot compress '%s'\n", dir)
+        }
+    }
 }
 
 // Handle the record harvested
@@ -70,8 +99,18 @@ func (lc *HarvestCommand) withRecord(res *RecordResult) bool {
     if (! res.Deleted) {
         lc.recordCount++
         dirId := (lc.recordCount / *(lc.maxDirSize)) + 1
+        if (dirId != lc.lastDirId) {
+            lc.closeDir(lc.lastDirId)
+            lc.lastDirId = dirId
+        }
 
-        fmt.Printf("%8d  %s\n", lc.recordCount, res.Identifier())
+        if (lc.Ctx.Debug) {
+            log.Printf("%8d  %s\n", lc.recordCount, res.Identifier())
+        }
+        if ((lc.recordCount % 1000) == 0) {
+            log.Printf("Harvested %d records\n", lc.recordCount)
+        }
+
         if (! *(lc.dryRun)) {
             lc.saveRecord(dirId, res)
         }
@@ -86,11 +125,19 @@ func (lc *HarvestCommand) withRecord(res *RecordResult) bool {
 func (lc *HarvestCommand) setupParallelHarvester() *SimpleMapReduce {
     return NewSimpleMapReduce(*(lc.downloadWorkers), 100, *(lc.downloadWorkers) * 5).
             Map(func (id interface{}) interface{} {
-                return lc.Ctx.Session.GetRecord(id.(string))
+                rec, err := lc.Ctx.Session.GetRecord(id.(string))
+                if (err == nil) {
+                    return rec
+                } else {
+                    log.Printf("Error: Cannot fetch ID '%s': %s", id.(string), err.Error())
+                    return nil
+                }
             }).
             Reduce(func (recs chan interface{}) {
                 for rec, hasMore := <-recs ; hasMore ; rec, hasMore = <-recs {
-                    lc.withRecord(rec.(*RecordResult))
+                    if (rec != nil) {
+                        lc.withRecord(rec.(*RecordResult))
+                    }
                 }
             }).
             Start()
@@ -146,12 +193,15 @@ func (lc *HarvestCommand) Flags(fs *flag.FlagSet) *flag.FlagSet {
     lc.fromFile = fs.String("F", "", "Read identifiers from a file.")
     lc.maxResults = fs.Int("c", 100000, "Maximum number of results to return.")
     lc.maxDirSize = fs.Int("D", 10000, "Maximum number of files to store in each directory.")
+    lc.compressDirs = fs.Bool("C", false, "Compress directories once they are full.")
     lc.downloadWorkers = fs.Int("W", 4, "Number of download workers running in parallel.")
 
     return fs
 }
 
 func (lc *HarvestCommand) Run(args []string) {
+    lc.lastDirId = 1
     lc.dirPrefix = time.Now().Format("20060102T150405")
     lc.harvest()
+    lc.closeDir(lc.lastDirId)
 }

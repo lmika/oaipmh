@@ -4,8 +4,8 @@ package main
 const DateFormat string = "2006-01-02"
 
 type Context struct {
+    Debug           bool
     Session         *OaipmhSession
-    LogMsg          func (msg string)
 
     Config          *Config
 
