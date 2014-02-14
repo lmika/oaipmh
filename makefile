@@ -1,5 +1,9 @@
 all: clean oaipmh
 
+deps:
+	go get 'github.com/moovweb/gokogiri'
+	go get 'github.com/lmika/command'
+
 clean:
 	-rm oaipmh
 
