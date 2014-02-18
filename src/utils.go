@@ -11,11 +11,18 @@ import (
 // Read lines from a file.  Lines will start being sent to the callback function between first
 // and max
 func LinesFromFile(filename string, firstResult int, maxResults int, callback func(line string) bool) {
-    file, err := os.Open(filename)
-    if err != nil {
-        panic(err)
+
+    var file *os.File = nil
+
+    if (filename == "-") {
+        file = os.Stdin
+    } else {
+        file, err := os.Open(filename)
+        if err != nil {
+            panic(err)
+        }
+        defer file.Close()
     }
-    defer file.Close()
 
     bufr := bufio.NewReader(file)
     resultCount := 0

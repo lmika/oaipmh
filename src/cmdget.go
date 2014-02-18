@@ -22,9 +22,9 @@ type GetCommand struct {
 }
 
 func (gc *GetCommand) Flags(fs *flag.FlagSet) *flag.FlagSet {
-    gc.header = fs.Bool("H", false, "Display the header.")
-    gc.wholeResponse = fs.Bool("R", false, "Display the entire OAI-PMH response.")
-    gc.separator = fs.String("s", "====", "The record separator.")
+    gc.header = fs.Bool("H", false, "Display record header")
+    gc.wholeResponse = fs.Bool("R", false, "Display entire OAI-PMH response")
+    gc.separator = fs.String("s", "====", "Record separator")
 
     return fs
 }

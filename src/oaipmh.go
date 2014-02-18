@@ -15,9 +15,13 @@ import (
     "github.com/lmika/command"
 )
 
+const APP_NAME string = "oaipmh-viewer"
+const APP_VERSION string = "0.1"
+
 // Flags
-var prefix *string = flag.String("p", "iso19139", "The prefix")
-var debug *bool = flag.Bool("d", false, "Enable debugging")
+var prefix *string = flag.String("p", "iso19139", "The record prefix to retrieve")
+var debug *bool = flag.Bool("d", false, "Display debugging output")
+var displayVersion *bool = flag.Bool("V", false, "Display version and exit")
 var listProvidersFlag *bool = flag.Bool("P", false, "List providers and exit")
 
 
@@ -32,6 +36,12 @@ func listProviders(ctx *Context) {
     for name, pconfig := range ctx.Config.Provider {
         fmt.Printf("%s = %s\n", name, pconfig.Url)
     }
+}
+
+// Display the version string
+func displayVersionInfo() {
+    fmt.Printf("%s %s\n", APP_NAME, APP_VERSION)
+    os.Exit(0)
 }
 
 func main() {
@@ -61,6 +71,9 @@ func main() {
         // Handle flags which do not require a command
         if (*listProvidersFlag) {
             listProviders(ctx)
+            os.Exit(0)
+        } else if (*displayVersion) {
+            displayVersionInfo()
             os.Exit(0)
         } else {
             command.Usage()

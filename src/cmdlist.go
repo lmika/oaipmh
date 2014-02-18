@@ -101,12 +101,12 @@ func (lc *ListCommand) listIdentifiersInDetail() {
 }
 
 func (lc *ListCommand) Flags(fs *flag.FlagSet) *flag.FlagSet {
-    lc.setName = fs.String("s", "", "The set to retrieve")
-    lc.beforeDate = fs.String("B", "", "List metadata records that have been updated before this date (YYYY-MM-DD).")
-    lc.afterDate = fs.String("A", "", "List metadata records that have been updated after this date (YYYY-MM-DD).")
-    lc.flagDetailed = fs.Bool("l", false, "List metadata in detail.")
-    lc.firstResult = fs.Int("f", 0, "The first result to return.")
-    lc.maxResults = fs.Int("c", 100000, "Maximum number of results to return.")
+    lc.setName = fs.String("s", "", "Select records from this set")
+    lc.beforeDate = fs.String("B", "", "Select records that were updated before date (YYYY-MM-DD)")
+    lc.afterDate = fs.String("A", "", "Select records that were updated after date (YYYY-MM-DD)")
+    lc.flagDetailed = fs.Bool("l", false, "Use detailed listing format")
+    lc.firstResult = fs.Int("f", 0, "Index of first record to retrieve")
+    lc.maxResults = fs.Int("c", 100000, "Maximum number of records to retrieve")
 
     return fs
 }

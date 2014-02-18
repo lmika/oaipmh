@@ -76,6 +76,11 @@ func (lc *HarvestCommand) saveRecord(dirId int, res *RecordResult) {
 
 // Close the current directory before creating and writing to a new one
 func (lc *HarvestCommand) closeDir(dirId int) {
+    // Do nothing if this is a dry run
+    if *(lc.dryRun) {
+        return
+    }
+
     dir := lc.dirName(dirId)
     if *(lc.compressDirs) {
         base := path.Base(dir)
@@ -184,17 +189,17 @@ func (lc *HarvestCommand) harvest() {
 }
 
 func (lc *HarvestCommand) Flags(fs *flag.FlagSet) *flag.FlagSet {
-    lc.dryRun = fs.Bool("n", false, "Dry run.  Do not save the results to a file.")
-    lc.listAndGet = fs.Bool("L", false, "Use list and get instead of ListRecord.  Slow.")
-    lc.setName = fs.String("s", "", "The set to retrieve")
-    lc.beforeDate = fs.String("B", "", "List metadata records that have been updated before this date (YYYY-MM-DD).")
-    lc.afterDate = fs.String("A", "", "List metadata records that have been updated after this date (YYYY-MM-DD).")
-    lc.firstResult = fs.Int("f", 0, "The first result to return.")
-    lc.fromFile = fs.String("F", "", "Read identifiers from a file.")
-    lc.maxResults = fs.Int("c", 100000, "Maximum number of results to return.")
-    lc.maxDirSize = fs.Int("D", 10000, "Maximum number of files to store in each directory.")
-    lc.compressDirs = fs.Bool("C", false, "Compress directories once they are full.")
-    lc.downloadWorkers = fs.Int("W", 4, "Number of download workers running in parallel.")
+    lc.dryRun = fs.Bool("n", false, "Dry run.  Do not save results.")
+    lc.listAndGet = fs.Bool("L", false, "Use list and get instead of ListRecord")
+    lc.setName = fs.String("s", "", "Select records from this set")
+    lc.beforeDate = fs.String("B", "", "Select records that were updated before date (YYYY-MM-DD)")
+    lc.afterDate = fs.String("A", "", "Select records that were updated after date (YYYY-MM-DD)")
+    lc.firstResult = fs.Int("f", 0, "Index of first record to retrieve")
+    lc.fromFile = fs.String("F", "", "Read identifiers from a file")
+    lc.maxResults = fs.Int("c", 100000, "Maximum number of records to retrieve")
+    lc.maxDirSize = fs.Int("D", 10000, "Maximum number of files to store in each directory")
+    lc.compressDirs = fs.Bool("C", false, "Compress directories once they are full")
+    lc.downloadWorkers = fs.Int("W", 4, "Number of download workers running in parallel")
 
     return fs
 }

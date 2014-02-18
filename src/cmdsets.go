@@ -16,7 +16,7 @@ type SetsCommand struct {
 }
 
 func (lc *SetsCommand) Flags(fs *flag.FlagSet) *flag.FlagSet {
-    lc.flagDetailed = fs.Bool("l", false, "List sets in detail.")
+    lc.flagDetailed = fs.Bool("l", false, "Use detailed listing format")
     return fs
 }
 
