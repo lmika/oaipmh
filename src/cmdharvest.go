@@ -33,6 +33,7 @@ type HarvestCommand struct {
     dirPrefix           string
     recordCount         int
     deletedCount        int
+    errorCount          int
     lastDirId           int
 }
 
@@ -125,6 +126,12 @@ func (lc *HarvestCommand) withRecord(res *RecordResult) bool {
     return true
 }
 
+// Handles an error returned
+func (lc *HarvestCommand) withError(err error) {
+    log.Printf("ERROR: %s\n", err)
+    lc.errorCount++
+}
+
 // Setup a map reduce parallel worker for downloading records from a source.  The mapping
 // function is expected to be given URNs.
 func (lc *HarvestCommand) setupParallelHarvester() *SimpleMapReduce {
@@ -134,14 +141,19 @@ func (lc *HarvestCommand) setupParallelHarvester() *SimpleMapReduce {
                 if (err == nil) {
                     return rec
                 } else {
-                    log.Printf("Error: Cannot fetch ID '%s': %s", id.(string), err.Error())
-                    return nil
+                    return err
                 }
             }).
             Reduce(func (recs chan interface{}) {
+                // Retrieves either a *RecordResult or an error
                 for rec, hasMore := <-recs ; hasMore ; rec, hasMore = <-recs {
-                    if (rec != nil) {
-                        lc.withRecord(rec.(*RecordResult))
+                    switch r := rec.(type) {
+                        case *RecordResult:
+                            lc.withRecord(r)
+                        case error:
+                            lc.withError(r)
+                        default:
+                            panic("Expected either an recordResult or an error")
                     }
                 }
             }).
@@ -209,4 +221,6 @@ func (lc *HarvestCommand) Run(args []string) {
     lc.dirPrefix = time.Now().Format("20060102T150405")
     lc.harvest()
     lc.closeDir(lc.lastDirId)
+
+    log.Printf("Finished: %d records harvested, %d deleted records, %d errors", lc.recordCount, lc.deletedCount, lc.errorCount)
 }

@@ -47,6 +47,17 @@ type RecordResult struct {
     Deleted         bool
 }
 
+// A record error (which can contain another error)
+type RecordError struct {
+    Id              string
+    Err             string
+}
+
+func (r *RecordError) Error() string {
+    return "Record '" + r.Id + "': " + r.Err
+}
+
+
 // Returns the identifier of the record.  This uses the header "identifier" field.
 func (rr *RecordResult) Identifier() string {
     for _, header := range rr.Header {
@@ -153,7 +164,7 @@ func (op *OaipmhSession) runXPathSingle(node xml.Node, expr string) xml.Node {
     if (len(resultNodes) == 1) {
         return xml.NewNode(resultNodes[0], node.MyDocument())
     } else if (len(resultNodes) == 0) {
-        panic("No nodes from XPath '" + expr + "'")
+        return nil
     } else {
         panic("Got more than one node from XPath '" + expr + "'")
     }
@@ -349,12 +360,16 @@ func (op *OaipmhSession) GetRecord(id string) (*RecordResult, error) {
 
     doc, err := op.requestXml("GetRecord", args)
     if (err != nil) {
-        return nil, err
+        return nil, &RecordError{id, err.Error()}
     }
 
     // Parse the XML document
     recordNode := op.runXPathSingle(doc.Root(), "/o:OAI-PMH/o:GetRecord/o:record")
-    return op.getHeaderAndMetadata(recordNode), nil
+    if (recordNode != nil) {
+        return op.getHeaderAndMetadata(recordNode), nil
+    } else {
+        return nil, &RecordError{id, "Could not find 'record' node in entry"}
+    }
 }
 
 // Returns the record payload as a string
@@ -366,11 +381,14 @@ func (op *OaipmhSession) GetRecordPayload(id string) (string, error) {
 
     doc, err := op.requestXml("GetRecord", args)
     if (err != nil) {
-        return "", err
+        return "", &RecordError{id, err.Error()}
     }
 
     // Parse the XML document
     recordNode := op.runXPathSingle(doc.Root(), "/o:OAI-PMH/o:GetRecord/o:record")
-
-    return recordNode.String(), nil
+    if (recordNode != nil) {
+        return recordNode.String(), nil
+    } else {
+        return "", &RecordError{id, "Could not find 'record' node in entry"}
+    }
 }
