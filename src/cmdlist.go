@@ -47,8 +47,14 @@ func parseDateString(dateString string) *time.Time {
 
 // Get list identifier arguments
 func (lc *ListCommand) genListIdentifierArgsFromCommandLine() ListIdentifierArgs {
-    set := *(lc.setName)
-    if (set == "") {
+    var set string
+
+    // Get the set.  If '-s' is not provided and a provider is used, use the default set.
+    // Otherwise, search all sets.  This implies that if using a provider, '-s ""' must be
+    // used to search all sets.
+    if lc.setName != nil {
+        set = *(lc.setName)
+    } else {
         set = lc.Ctx.Provider.Set
     }
 
