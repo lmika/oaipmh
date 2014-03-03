@@ -52,7 +52,7 @@ func (lc *ListCommand) genListIdentifierArgsFromCommandLine() ListIdentifierArgs
     // Get the set.  If '-s' is not provided and a provider is used, use the default set.
     // Otherwise, search all sets.  This implies that if using a provider, '-s ""' must be
     // used to search all sets.
-    if lc.setName != nil {
+    if lc.setName == nil {
         set = *(lc.setName)
     } else {
         set = lc.Ctx.Provider.Set

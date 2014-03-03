@@ -39,9 +39,12 @@ type HarvestCommand struct {
 
 // Get list identifier arguments
 func (lc *HarvestCommand) genListIdentifierArgsFromCommandLine() ListIdentifierArgs {
-    set := *(lc.setName)
-    if (set == "") {
+    var set string
+
+    if (lc.setName == nil) {
         set = lc.Ctx.Provider.Set
+    } else {
+        set = *(lc.setName)
     }
 
     args := ListIdentifierArgs{
