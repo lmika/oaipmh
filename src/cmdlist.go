@@ -52,9 +52,8 @@ func (lc *ListCommand) genListIdentifierArgsFromCommandLine() ListIdentifierArgs
     // Get the set.  If '-s' is not provided and a provider is used, use the default set.
     // Otherwise, search all sets.  This implies that if using a provider, '-s ""' must be
     // used to search all sets.
-    if lc.setName == nil {
-        set = *(lc.setName)
-    } else {
+    set = *(lc.setName)
+    if set == "\x00" {
         set = lc.Ctx.Provider.Set
     }
 
@@ -107,7 +106,7 @@ func (lc *ListCommand) listIdentifiersInDetail() {
 }
 
 func (lc *ListCommand) Flags(fs *flag.FlagSet) *flag.FlagSet {
-    lc.setName = fs.String("s", "", "Select records from this set")
+    lc.setName = fs.String("s", "\x00", "Select records from this set")
     lc.beforeDate = fs.String("B", "", "Select records that were updated before date (YYYY-MM-DD)")
     lc.afterDate = fs.String("A", "", "Select records that were updated after date (YYYY-MM-DD)")
     lc.flagDetailed = fs.Bool("l", false, "Use detailed listing format")

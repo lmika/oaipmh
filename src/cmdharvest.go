@@ -41,10 +41,9 @@ type HarvestCommand struct {
 func (lc *HarvestCommand) genListIdentifierArgsFromCommandLine() ListIdentifierArgs {
     var set string
 
-    if (lc.setName == nil) {
+    set = *(lc.setName)
+    if set == "\x00" {
         set = lc.Ctx.Provider.Set
-    } else {
-        set = *(lc.setName)
     }
 
     args := ListIdentifierArgs{
@@ -204,9 +203,9 @@ func (lc *HarvestCommand) harvest() {
 }
 
 func (lc *HarvestCommand) Flags(fs *flag.FlagSet) *flag.FlagSet {
+    lc.setName = fs.String("s", "\x00", "Select records from this set")
     lc.dryRun = fs.Bool("n", false, "Dry run.  Do not save results.")
     lc.listAndGet = fs.Bool("L", false, "Use list and get instead of ListRecord")
-    lc.setName = fs.String("s", "", "Select records from this set")
     lc.beforeDate = fs.String("B", "", "Select records that were updated before date (YYYY-MM-DD)")
     lc.afterDate = fs.String("A", "", "Select records that were updated after date (YYYY-MM-DD)")
     lc.firstResult = fs.Int("f", 0, "Index of first record to retrieve")
