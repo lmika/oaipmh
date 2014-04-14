@@ -6,9 +6,14 @@ Command line tool for querying and retrieving records from OAI-PMI providers.
 Installing
 ----------
 
+Download the latest release [here](releases/latest).
+
+To build from source:
+
 1. Download the GO SDK from [golang.org](http://golang.org/)
 2. Run `make deps all`
 3. Add `oaipmh` to your PATH
+
 
 Usage
 -----
