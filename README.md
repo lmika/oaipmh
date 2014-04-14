@@ -6,7 +6,13 @@ Command line tool for querying and retrieving records from OAI-PMI providers.
 Installing
 ----------
 
-Download the latest release [here](releases/latest).
+This tool requires *libxml2* and *libxslt*, so please install it before using this tool.
+
+To install the binary:
+
+1. Download the release from [here](https://github.com/lmika-bom/oaipmh-viewer/releases/latest)
+2. Unzip the archive
+3. Add `oaipmh` to your PATH
 
 To build from source:
 
