@@ -12,9 +12,12 @@
 package oaipmh
 
 import (
+    "bytes"
     "os"
     "fmt"
     "time"
+    "path/filepath"
+    "strings"
 )
 
 // The default metadata format.
@@ -79,10 +82,130 @@ func (fr *FileRepository) Sets() ([]Set, error) {
 
 // Reads the record from a set.  This simply iterates over all the files in a set directory.
 func (fr *FileRepository) ListRecords(set string, from time.Time, to time.Time) (RecordCursor, error) {
-    return nil, fmt.Errorf("Not implemented yet")
+    if (set == "") {
+        return nil, fmt.Errorf("Set is required")
+    }
+
+    recs, err := fr.scanRecordsFromDir(set, func(rec *Record) bool { return true })
+    if (err != nil) {
+        return nil, err
+    }
+
+    return &SliceRecordCursor{recs, 0}, nil
 }
 
 // Returns a record
 func (fr *FileRepository) Record(id string) (*Record, error) {
     return nil, fmt.Errorf("Not implemented yet")
+}
+
+// Scan for "metadata" records from a directory.
+func (fr *FileRepository) scanRecordsFromDir(setname string, filter func(rec *Record) bool) ([]*Record, error) {
+    dirName := filepath.Join(fr.BaseDir, setname)
+    dir, err := os.Open(dirName)
+    if (err != nil) {
+        return nil, err
+    }
+    defer dir.Close()
+
+    // Read the contents of the directory
+    files, err := dir.Readdir(-1)
+    if (err != nil) {
+        return nil, err
+    }
+
+    // Convert them into records
+    recs := make([]*Record, 0, len(files))
+    for _, file := range files {
+        fullFilename := filepath.Join(dirName, file.Name())
+        rec := fr.buildRecord(setname, fullFilename, file)
+        if (rec != nil) && (filter(rec)) {
+            recs = append(recs, rec)
+        }
+    }
+
+    return recs, nil
+}
+
+// Build a record from a file info.  Returns nil if a record cannot be built from a file.
+func (fr *FileRepository) buildRecord(set string, filename string, fileInfo os.FileInfo) *Record {
+    basename := fileInfo.Name()
+
+    if (! strings.HasSuffix(basename, ".xml")) {
+        return nil
+    }
+    trimmedFilename := strings.TrimSuffix(basename, ".xml")
+
+    return &Record{
+        ID: trimmedFilename,
+        Date: fileInfo.ModTime(),
+        Set: set,
+        Content: func() (string, error) {
+            file, err := os.Open(filename)
+            if (err != nil) {
+                return "", err
+            }
+            defer file.Close()
+
+            buffer := new(bytes.Buffer)
+            buffer.ReadFrom(file)
+            return buffer.String(), nil
+        },
+    }
+}
+
+// --------------------------------------------------------------------------------
+// A cursor for navigating a slice
+
+type SliceRecordCursor struct {
+    Records     []*Record
+    Pointer     int
+}
+
+// Returns true if the particular position is valid
+func (c *SliceRecordCursor) posValid(p int) bool {
+    return (p >= 0) && (p < len(c.Records))
+}
+
+// Indicates if the cursor has more records
+func (c *SliceRecordCursor) HasNext() bool {
+    if (c.posValid(c.Pointer + 1)) {
+        return true
+    } else {
+        return false
+    }
+}
+
+// Goes to the next record.  If the next record exists, returns true.  Otherwise, returns false.
+func (c *SliceRecordCursor) Next() bool {
+    if (c.posValid(c.Pointer + 1)) {
+        c.Pointer++
+        return true
+    } else {
+        return false
+    }
+}
+
+// Moves the cursor to a particular position.  If the position is valid, returns true.
+func (c *SliceRecordCursor) SetPos(pos int) bool {
+    if (c.posValid(pos)) {
+        c.Pointer = pos
+        return true
+    } else {
+        return false
+    }
+}
+
+// Returns the current position of the cursor.
+func (c *SliceRecordCursor) Pos() int {
+    return c.Pointer
+}
+
+// Returns the current record, or nil if the cursor is at an invalid position.
+func (c *SliceRecordCursor) Record() *Record {
+    if (c.posValid(c.Pointer)) {
+        return c.Records[c.Pointer]
+    } else {
+        return nil
+    }
 }

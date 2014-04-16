@@ -8,7 +8,11 @@ import (
     "encoding/xml"
     "time"
     "log"
+    "fmt"
     "strings"
+    "strconv"
+
+    "github.com/nu7hatch/gouuid"
 )
 
 // Handler verb
@@ -22,6 +26,9 @@ type Handler struct {
 
     // The supported verbs.  This simplifies the dispatching of requests.
     verbs           map[string]handlerVerb
+
+    // The set of active resumption tokens mapped to IDs
+    resumptionToks  map[string]*ResumptionToken
 }
 
 // Creates a new handler
@@ -29,12 +36,14 @@ func NewHandler(repo Repository) *Handler {
     h := &Handler{
         Repository: repo,
         verbs: make(map[string]handlerVerb),
+        resumptionToks: make(map[string]*ResumptionToken),
     }
 
     // Set the verbs
     h.verbs["listmetadataformats"] = h.listMetadataFormats
     h.verbs["listsets"] = h.listSets
     h.verbs["identify"] = h.identify
+    h.verbs["listidentifiers"] = h.listIdentifiers
 
     return h
 }
@@ -130,4 +139,97 @@ func (h *Handler) listSets(req *http.Request) (OaipmhResponsePayload, error) {
     return &OaipmhListSets {
         Sets: oaipmhSets,
     }, nil
+}
+
+// List metadata identifiers
+func (h *Handler) listIdentifiers(req *http.Request) (OaipmhResponsePayload, error) {
+    cursor, err := h.getCursorForListVerb(req)
+    if (err != nil) {
+        return nil, err
+    }
+
+    // List the records.
+    recs, _ := NextNRecords(cursor, 100)
+    headers := make([]OaipmhHeader, len(recs))
+    for i, rec := range recs {
+        headers[i] = RecordToOaipmhHeader(rec)
+    }
+
+    resumptionToken, _ := h.storeCursorState(cursor)
+    return &OaipmhListIdentifiers{
+        Headers: headers,
+        ResumptionToken: resumptionToken,
+    }, nil
+}
+
+// Get a cursor for a list verb.
+func (h *Handler) getCursorForListVerb(req *http.Request) (RecordCursor, error) {
+    var cursor RecordCursor
+    var err error
+
+    if (req.Form.Get("resumptionToken") != "") {
+        cursor = h.loadCursorState(req.Form.Get("resumptionToken"))
+    } else {
+        set := req.Form.Get("set")
+        cursor, err = h.Repository.ListRecords(set, MinTime, time.Now())
+        if (err != nil) {
+            return nil, err
+        }
+    }
+
+    return cursor, nil
+}
+
+// Store the cursor state and returns a resumption token if required.
+func (h *Handler) storeCursorState(cursor RecordCursor) (string, bool) {
+    if (cursor.HasNext()) {
+        rt := NewResumptionToken(cursor)
+        h.resumptionToks[rt.ID] = rt
+        return fmt.Sprintf("%s/%d", rt.ID, cursor.Pos()), true
+    } else {
+        return "", false
+    }
+}
+
+// Load cursor state.  Returns nil if no resumption token was found.
+func (h *Handler) loadCursorState(resumptionToken string) RecordCursor {
+    var id string
+    var pos int
+
+    toks := strings.Split(resumptionToken, "/")
+    if (len(toks) != 2) {
+        return nil
+    }
+    id = toks[0]
+    pos, _ = strconv.Atoi(toks[1])
+
+    cursor := h.resumptionToks[id].Cursor
+    if (cursor == nil) {
+        return nil
+    }
+    defer delete(h.resumptionToks, id)
+
+    cursor.SetPos(pos)
+
+    return cursor
+}
+
+// ------------------------------------------------------------------------------
+// Resumption token
+
+type ResumptionToken struct {
+    // The token ID
+    ID          string
+
+    // The time the token was created
+    Created     time.Time
+
+    // The cursor
+    Cursor      RecordCursor
+}
+
+// Creates a new resumption token
+func NewResumptionToken(cursor RecordCursor) *ResumptionToken {
+    id, _ := uuid.NewV4()
+    return &ResumptionToken{id.String(), time.Now(), cursor}
 }

@@ -37,17 +37,39 @@ type Repository interface {
 
 // Interface for a record cursor.
 type RecordCursor interface {
+    // Indicates if the cursor has more records
+    HasNext() bool
+
     // Goes to the next record.  If the next record exists, returns true.  Otherwise, returns false.
     Next() bool
 
     // Moves the cursor to a particular position.  If the position is valid, returns true.
-    Seek(pos int) bool
+    SetPos(pos int) bool
 
     // Returns the current position of the cursor.
     Pos() int
 
     // Returns the current record, or nil if the cursor is at an invalid position.
     Record() *Record
+}
+
+// Returns the next N records from a cursor.  Returns true if there are more records to return.
+func NextNRecords(cursor RecordCursor, n int) (records []*Record, hasmore bool) {
+    if (n == 0) {
+        records = make([]*Record, 0)
+        hasmore = true
+        return
+    }
+
+    records = make([]*Record, 0, n)
+    for (n > 0) && (cursor.HasNext()) {
+        records = append(records, cursor.Record())
+        cursor.Next()
+        n--
+    }
+
+    hasmore = cursor.HasNext()
+    return
 }
 
 
@@ -69,7 +91,7 @@ type Set struct {
 type Record struct {
     ID          string
     Date        time.Time
-    Sets        []string
+    Set         string
 
     // Function to call to the the content of the record.
     Content     func() (string, error)

@@ -1,5 +1,5 @@
 TARGET = oaipmh
-VER = 1.0
+VER = 1.1
 
 RELEASE_ZIP = oaipmh-viewer-$(VER).zip
 RELEASE_DIR = oaipmh-viewer-$(VER)
@@ -10,6 +10,7 @@ deps:
 	go get 'github.com/moovweb/gokogiri'
 	go get 'github.com/lmika/command'
 	go get 'code.google.com/p/gcfg'
+	go get 'github.com/nu7hatch/gouuid'
 
 clean:
 	-rm $(TARGET)
