@@ -61,6 +61,9 @@ func main() {
     command.On("harvest", "Harvest records and save them as files", &HarvestCommand{
         Ctx: ctx,
     })
+    command.On("serve", "Start a OAI-PMH provider to host the records on", &HostCommand{
+        Ctx: ctx,
+    })
 
     providerUrl := command.PreArg("provider", "URL to the OAI-PMH provider")
 
