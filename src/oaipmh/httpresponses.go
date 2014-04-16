@@ -62,6 +62,13 @@ type OaipmhListIdentifiers struct {
     ResumptionToken string                  `xml:"resumptionToken,omitempty"`
 }
 
+// Payload for listing records
+type OaipmhListRecords struct {
+    XMLName         xml.Name                `xml:"ListRecords"`
+    Records         []OaipmhRecord          `xml:"record"`
+    ResumptionToken string                  `xml:"resumptionToken,omitempty"`
+}
+
 // Header
 type OaipmhHeader struct {
     Identifier      string                  `xml:"identifier"`
@@ -74,6 +81,29 @@ func RecordToOaipmhHeader(rec *Record) OaipmhHeader {
         Identifier: rec.ID,
         DateStamp: rec.Date.In(time.UTC),
         SetSpec: rec.Set,
+    }
+}
+
+// Record
+type OaipmhRecord struct {
+    XMLName         xml.Name                `xml:"record"`
+    Header          OaipmhHeader            `xml:"header"`
+    Content         OaipmhContent           `xml:"metadata"`
+}
+
+type OaipmhContent struct {
+    Xml             string                  `xml:",innerxml"`
+}
+
+func RecordToOaipmhRecord(rec *Record) (OaipmhRecord, error) {
+    content, err := rec.Content()
+    if (err != nil) {
+        return OaipmhRecord{}, err
+    } else {
+        return OaipmhRecord{
+            Header: RecordToOaipmhHeader(rec),
+            Content: OaipmhContent{content},
+        }, err
     }
 }
 

@@ -44,6 +44,7 @@ func NewHandler(repo Repository) *Handler {
     h.verbs["listsets"] = h.listSets
     h.verbs["identify"] = h.identify
     h.verbs["listidentifiers"] = h.listIdentifiers
+    h.verbs["listrecords"] = h.listRecords
 
     return h
 }
@@ -162,6 +163,30 @@ func (h *Handler) listIdentifiers(req *http.Request) (OaipmhResponsePayload, err
     }, nil
 }
 
+// List metadata records
+func (h *Handler) listRecords(req *http.Request) (OaipmhResponsePayload, error) {
+    cursor, err := h.getCursorForListVerb(req)
+    if (err != nil) {
+        return nil, err
+    }
+
+    // List the records.
+    recs, _ := NextNRecords(cursor, 100)
+    records := make([]OaipmhRecord, len(recs))
+    for i, rec := range recs {
+        records[i], err = RecordToOaipmhRecord(rec)
+        if (err != nil) {
+            return nil, err
+        }
+    }
+
+    resumptionToken, _ := h.storeCursorState(cursor)
+    return &OaipmhListRecords{
+        Records: records,
+        ResumptionToken: resumptionToken,
+    }, nil
+}
+
 // Get a cursor for a list verb.
 func (h *Handler) getCursorForListVerb(req *http.Request) (RecordCursor, error) {
     var cursor RecordCursor
@@ -182,7 +207,7 @@ func (h *Handler) getCursorForListVerb(req *http.Request) (RecordCursor, error) 
 
 // Store the cursor state and returns a resumption token if required.
 func (h *Handler) storeCursorState(cursor RecordCursor) (string, bool) {
-    if (cursor.HasNext()) {
+    if (cursor.HasRecord()) {
         rt := NewResumptionToken(cursor)
         h.resumptionToks[rt.ID] = rt
         return fmt.Sprintf("%s/%d", rt.ID, cursor.Pos()), true

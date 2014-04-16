@@ -37,8 +37,8 @@ type Repository interface {
 
 // Interface for a record cursor.
 type RecordCursor interface {
-    // Indicates if the cursor has more records
-    HasNext() bool
+    // Indicates if the cursor is pointing to a record
+    HasRecord() bool
 
     // Goes to the next record.  If the next record exists, returns true.  Otherwise, returns false.
     Next() bool
@@ -62,13 +62,13 @@ func NextNRecords(cursor RecordCursor, n int) (records []*Record, hasmore bool) 
     }
 
     records = make([]*Record, 0, n)
-    for (n > 0) && (cursor.HasNext()) {
+    for (n > 0) && (cursor.HasRecord()) {
         records = append(records, cursor.Record())
         cursor.Next()
         n--
     }
 
-    hasmore = cursor.HasNext()
+    hasmore = cursor.HasRecord()
     return
 }
 

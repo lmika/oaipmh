@@ -18,6 +18,7 @@ import (
     "time"
     "path/filepath"
     "strings"
+    "regexp"
 )
 
 // The default metadata format.
@@ -26,6 +27,9 @@ var DefaultFormat Format = Format{
     Schema:     "http://www.isotc211.org/2005/gmi/gmi.xsd",
     Namespace:  "http://www.isotc211.org/2005/gmi",
 }
+
+// Pattern to use selecting XML processing instructions
+var xmlPIRegExp *regexp.Regexp = regexp.MustCompile(`<\?[^?]*\?>`)
 
 
 // A file based repository
@@ -149,7 +153,11 @@ func (fr *FileRepository) buildRecord(set string, filename string, fileInfo os.F
 
             buffer := new(bytes.Buffer)
             buffer.ReadFrom(file)
-            return buffer.String(), nil
+            content := buffer.String()
+
+            // Remove processing instructions
+            content = xmlPIRegExp.ReplaceAllString(content, "")
+            return content, nil
         },
     }
 }
@@ -168,18 +176,14 @@ func (c *SliceRecordCursor) posValid(p int) bool {
 }
 
 // Indicates if the cursor has more records
-func (c *SliceRecordCursor) HasNext() bool {
-    if (c.posValid(c.Pointer + 1)) {
-        return true
-    } else {
-        return false
-    }
+func (c *SliceRecordCursor) HasRecord() bool {
+    return c.posValid(c.Pointer)
 }
 
 // Goes to the next record.  If the next record exists, returns true.  Otherwise, returns false.
 func (c *SliceRecordCursor) Next() bool {
-    if (c.posValid(c.Pointer + 1)) {
-        c.Pointer++
+    c.Pointer++
+    if (c.posValid(c.Pointer)) {
         return true
     } else {
         return false
