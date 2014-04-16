@@ -4,7 +4,6 @@
 package oaipmh
 
 import (
-    "net/url"
     "net/http"
     "encoding/xml"
     "time"
@@ -13,7 +12,7 @@ import (
 )
 
 // Handler verb
-type handlerVerb    func(args url.Values) OaipmhResponsePayload
+type handlerVerb    func(req *http.Request) (OaipmhResponsePayload, error)
 
 // A OAI-PMH handler.  This can be used to host a repository as a OAI-PMH provider.
 //
@@ -34,6 +33,8 @@ func NewHandler(repo Repository) *Handler {
 
     // Set the verbs
     h.verbs["listmetadataformats"] = h.listMetadataFormats
+    h.verbs["listsets"] = h.listSets
+    h.verbs["identify"] = h.identify
 
     return h
 }
@@ -44,22 +45,26 @@ func (h *Handler) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
     req.ParseForm()
 
     verb := req.Form.Get("verb")
-    payload := h.dispatch(verb, req.Form)
+    payload, err := h.dispatch(verb, req)
+    if (err != nil) {
+        log.Printf("Internal server error during dispatch: verb = %s, error = %s", verb, err.Error())
+        http.Error(rw, err.Error(), http.StatusInternalServerError)
+        return
+    }
 
     fullResponse := OaipmhResponse{
         Date: time.Now().In(time.UTC),
         Request: OaipmhResponseRequest{
-            Host: req.URL.Host,
+            Host: "http://" + req.Host + "/",
             Verb: verb,
         },
         Payload: payload,
     }
 
-    s, e := xml.MarshalIndent(fullResponse, "  ", "    ")
-    if (e != nil) {
-        log.Printf("Internal server error: verb = %s, error = %s", verb, e.Error())
-        rw.WriteHeader(http.StatusInternalServerError)
-        rw.Write([]byte("Internal server error"))
+    s, err := xml.MarshalIndent(fullResponse, "  ", "    ")
+    if (err != nil) {
+        log.Printf("Internal server error while writing response: verb = %s, error = %s", verb, err.Error())
+        http.Error(rw, err.Error(), http.StatusInternalServerError)
         return
     }
 
@@ -71,7 +76,7 @@ func (h *Handler) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
 }
 
 // Dispatches the request
-func (h *Handler) dispatch(verb string, args url.Values) OaipmhResponsePayload {
+func (h *Handler) dispatch(verb string, req *http.Request) (OaipmhResponsePayload, error) {
     log.Printf("Request: verb=%s", verb)
 
     verbHandler, hasVerbHandler := h.verbs[strings.ToLower(verb)]
@@ -79,19 +84,50 @@ func (h *Handler) dispatch(verb string, args url.Values) OaipmhResponsePayload {
         return &OaipmhError{
             Code: "badVerb",
             Message: "Illegal OAI verb: " + verb,
-        }
+        }, nil
     }
 
-    return verbHandler(args)
+    return verbHandler(req)
+}
+
+// Identify the repository
+func (h *Handler) identify(req *http.Request) (OaipmhResponsePayload, error) {
+    return &OaipmhIdentify{
+        RepositoryName: "oaipmh-viewer served repository",
+        BaseURL: "http://" + req.Host + "/",
+        ProtocolVer: "2.0",
+        EarliestDatestamp: MinTime.In(time.UTC).Format(time.RFC3339),
+        DeletedRecord: "transient",
+        Granularity: "YYYY-MM-DDThh:mm:ssZ",
+        AdminEmail: "",
+    }, nil
 }
 
 
 // Lists the metadata formats
-func (h *Handler) listMetadataFormats(args url.Values) OaipmhResponsePayload {
+func (h *Handler) listMetadataFormats(req *http.Request) (OaipmhResponsePayload, error) {
     // Returns the slice of sets from the repository
     formats := h.Repository.Formats()
 
     return &OaipmhListMetadataFormats{
         Formats: formats,
+    }, nil
+}
+
+// List the metadata sets
+func (h *Handler) listSets(req *http.Request) (OaipmhResponsePayload, error) {
+    sets, err := h.Repository.Sets()
+    if (err != nil) {
+        return nil, err
     }
+
+    // Convert the sets into OAI-PMH sets.
+    oaipmhSets := make([]OaipmhSet, len(sets))
+    for i, set := range sets {
+        oaipmhSets[i] = OaipmhSet{set.Spec, set.Name, OaipmhSetDescr{OaipmhOaiDC{set.Descr}}}
+    }
+
+    return &OaipmhListSets {
+        Sets: oaipmhSets,
+    }, nil
 }

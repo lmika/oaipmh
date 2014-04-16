@@ -34,5 +34,8 @@ func (gc *HostCommand) Run(args []string) {
     }
 
     log.Printf("OAI-PMH provider running at %s", bindUrl)
-    server.ListenAndServe()
+    err := server.ListenAndServe()
+    if (err != nil) {
+        log.Fatal("ListenAndServe: ", err)
+    }
 }

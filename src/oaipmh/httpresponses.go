@@ -30,8 +30,41 @@ type OaipmhError struct {
     Message         string                  `xml:",chardata"`
 }
 
+// Payload for returning the identity of this repository
+type OaipmhIdentify struct {
+    XMLName         string                  `xml:"Identify"`
+    RepositoryName  string                  `xml:"repositoryName"`
+    BaseURL         string                  `xml:"baseUrl"`
+    ProtocolVer     string                  `xml:"protocolVersion"`
+    AdminEmail      string                  `xml:"adminEmail"`
+    EarliestDatestamp string                `xml:"earliestDatestamp"`
+    DeletedRecord   string                  `xml:"deletedRecord"`
+    Granularity     string                  `xml:"granularity"`
+}
+
 // Payload for a list of formats
 type OaipmhListMetadataFormats struct {
     XMLName         string                  `xml:"ListMetadataFormats"`
     Formats         []Format                `xml:"metadataFormat"`
+}
+
+// Payload for listing sets
+type OaipmhListSets struct {
+    XMLName         string                  `xml:"ListSets"`
+    Sets            []OaipmhSet             `xml:"set"`
+}
+
+// Single set for listing
+type OaipmhSet struct {
+    Spec        string              `xml:"setSpec"`
+    Name        string              `xml:"setName"`
+    Descr       OaipmhSetDescr      `xml:"setDescription"`
+}
+
+type OaipmhSetDescr struct {
+    OaiDC       OaipmhOaiDC         `xml:"http://www.openarchives.org/OAI/2.0/oai_dc/ dc"`
+}
+
+type OaipmhOaiDC struct {
+    Descr       string              `xml:"description"`
 }
