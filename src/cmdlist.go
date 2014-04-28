@@ -72,7 +72,7 @@ func (lc *ListCommand) listIdentifiers() {
 
     args := lc.genListIdentifierArgsFromCommandLine()
 
-    lc.Ctx.Session.ListIdentifiers(args, *(lc.firstResult), *(lc.maxResults), func(res ListIdentifierResult) bool {
+    err := lc.Ctx.Session.ListIdentifiers(args, *(lc.firstResult), *(lc.maxResults), func(res ListIdentifierResult) bool {
         if (res.Deleted) {
             deletedCount += 1
         } else {
@@ -81,9 +81,14 @@ func (lc *ListCommand) listIdentifiers() {
         return true
     })
 
-    if (deletedCount > 0) {
-        fmt.Fprintf(os.Stderr, "oaipmh: %d deleted record(s) not displayed.\n", deletedCount)
+    if (err == nil) {
+        if (deletedCount > 0) {
+            fmt.Fprintf(os.Stderr, "oaipmh: %d deleted record(s) not displayed.\n", deletedCount)
+        }
+    } else {
+        fmt.Fprintf(os.Stderr, "oaipmh: %s\n", err.Error())
     }
+
 
 }
 

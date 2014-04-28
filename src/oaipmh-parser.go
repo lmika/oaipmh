@@ -102,6 +102,11 @@ func (op *OaipmhSession) request(verb string, args url.Values) ([]byte, error) {
     }
     defer resp.Body.Close()
 
+    // If the response is not 200, return an error
+    if (resp.StatusCode != 200) {
+        return nil, fmt.Errorf("HTTP error: %s", resp.Status)
+    }
+
     respData := bytes.Buffer{}
     respData.ReadFrom(resp.Body)
 
@@ -118,6 +123,22 @@ func (op *OaipmhSession) requestXml(verb string, args url.Values) (xml.Document,
     doc, err := gokogiri.ParseXml(resp)
     if err != nil {
         return nil, err
+    }
+
+    return doc, nil
+}
+
+// Like requestXml but recognises OAI-PMH errors.  If an error is encountered, returns an error
+func (op *OaipmhSession) requestOaipmhXml(verb string, args url.Values) (xml.Document, error) {
+    doc, err := op.requestXml(verb, args)
+    if err != nil {
+        return nil, err
+    }
+
+    // Search for an error node
+    errorNode := op.runXPathSingle(doc.Root(), "/o:OAI-PMH/o:error")
+    if (errorNode != nil) {
+        return nil, fmt.Errorf("OAI-PMH error: %s", op.safeNodeContents(errorNode))
     }
 
     return doc, nil
@@ -215,7 +236,7 @@ func (op *OaipmhSession) requestXmlList(verb string, args url.Values, xpath stri
 
     for {
         // Make the request
-        doc, err := op.requestXml(verb, args)
+        doc, err := op.requestOaipmhXml(verb, args)
         if err != nil {
             return err
         }
@@ -358,7 +379,7 @@ func (op *OaipmhSession) GetRecord(id string) (*RecordResult, error) {
         "identifier":       {id},
     }
 
-    doc, err := op.requestXml("GetRecord", args)
+    doc, err := op.requestOaipmhXml("GetRecord", args)
     if (err != nil) {
         return nil, &RecordError{id, err.Error()}
     }
@@ -379,7 +400,7 @@ func (op *OaipmhSession) GetRecordPayload(id string) (string, error) {
         "identifier":       {id},
     }
 
-    doc, err := op.requestXml("GetRecord", args)
+    doc, err := op.requestOaipmhXml("GetRecord", args)
     if (err != nil) {
         return "", &RecordError{id, err.Error()}
     }

@@ -45,6 +45,7 @@ func NewHandler(repo Repository) *Handler {
     h.verbs["identify"] = h.identify
     h.verbs["listidentifiers"] = h.listIdentifiers
     h.verbs["listrecords"] = h.listRecords
+    h.verbs["getrecord"] = h.getRecord
 
     return h
 }
@@ -185,6 +186,32 @@ func (h *Handler) listRecords(req *http.Request) (OaipmhResponsePayload, error) 
         Records: records,
         ResumptionToken: resumptionToken,
     }, nil
+}
+
+// Get metadata records
+func (h *Handler) getRecord(req *http.Request) (OaipmhResponsePayload, error) {
+    id := req.Form.Get("identifier")
+
+    record, err := h.Repository.Record(id)
+    if (err != nil) {
+        return nil, err
+    }
+
+    if (record != nil) {
+        oaipmhRec, err := RecordToOaipmhRecord(record)
+        if (err != nil) {
+            return nil, err
+        } else {
+            return &OaipmhGetRecord{
+                Record: oaipmhRec,
+            }, nil
+        }
+    } else {
+        return &OaipmhError{
+            Code: "idDoesNotExist",
+            Message: "Metadata with ID '" + id + "' does not exist",
+        }, nil
+    }
 }
 
 // Get a cursor for a list verb.

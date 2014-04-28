@@ -107,6 +107,12 @@ func RecordToOaipmhRecord(rec *Record) (OaipmhRecord, error) {
     }
 }
 
+// GetRecord
+type OaipmhGetRecord struct {
+    XMLName         xml.Name                `xml:"GetRecord"`
+    Record          OaipmhRecord            `xml:"record"`
+}
+
 // Single set for listing
 type OaipmhSet struct {
     Spec        string                      `xml:"setSpec"`

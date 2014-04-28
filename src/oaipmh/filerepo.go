@@ -14,7 +14,8 @@ package oaipmh
 import (
     "bytes"
     "os"
-    "fmt"
+_   "fmt"
+_   "log"
     "time"
     "path/filepath"
     "strings"
@@ -86,21 +87,50 @@ func (fr *FileRepository) Sets() ([]Set, error) {
 
 // Reads the record from a set.  This simply iterates over all the files in a set directory.
 func (fr *FileRepository) ListRecords(set string, from time.Time, to time.Time) (RecordCursor, error) {
+    // If no set is specific, scan all the sets
     if (set == "") {
-        return nil, fmt.Errorf("Set is required")
-    }
+        sets, err := fr.Sets()
+        if (err != nil) {
+            return nil, err
+        }
 
-    recs, err := fr.scanRecordsFromDir(set, func(rec *Record) bool { return true })
-    if (err != nil) {
-        return nil, err
-    }
+        allRecords := make([]*Record, 0)
+        for _, aset := range sets {
+            recs, err := fr.scanRecordsFromDir(aset.Spec, func(rec *Record) bool { return true })
+            if (err != nil) {
+                return nil, err
+            }
+            allRecords = append(allRecords, recs...)
+        }
 
-    return &SliceRecordCursor{recs, 0}, nil
+        return &SliceRecordCursor{allRecords, 0}, nil
+
+    } else {
+        recs, err := fr.scanRecordsFromDir(set, func(rec *Record) bool { return true })
+        if (err != nil) {
+            return nil, err
+        }
+
+        return &SliceRecordCursor{recs, 0}, nil
+    }
 }
 
 // Returns a record
 func (fr *FileRepository) Record(id string) (*Record, error) {
-    return nil, fmt.Errorf("Not implemented yet")
+    // Search for the record in each of the sets in turn
+    sets, err := fr.Sets()
+    if (err != nil) {
+        return nil, err
+    }
+
+    for _, set := range sets {
+        setname := set.Spec
+        record := fr.readRecordFromSet(setname, id)
+        if (record != nil) {
+            return record, nil
+        }
+    }
+    return nil, nil
 }
 
 // Scan for "metadata" records from a directory.
@@ -131,6 +161,18 @@ func (fr *FileRepository) scanRecordsFromDir(setname string, filter func(rec *Re
     return recs, nil
 }
 
+// Attempts to load a record from a set
+func (fr *FileRepository) readRecordFromSet(set string, id string) *Record {
+    basename := id + ".xml"
+    recordPath := filepath.Join(fr.BaseDir, set, basename)
+    fileInfo, err := os.Stat(recordPath)
+    if (err == nil) {
+        return fr.buildRecord(set, recordPath, fileInfo)
+    } else {
+        return nil
+    }
+}
+
 // Build a record from a file info.  Returns nil if a record cannot be built from a file.
 func (fr *FileRepository) buildRecord(set string, filename string, fileInfo os.FileInfo) *Record {
     basename := fileInfo.Name()
@@ -146,6 +188,7 @@ func (fr *FileRepository) buildRecord(set string, filename string, fileInfo os.F
         Set: set,
         Content: func() (string, error) {
             file, err := os.Open(filename)
+
             if (err != nil) {
                 return "", err
             }
