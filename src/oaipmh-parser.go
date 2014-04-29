@@ -68,6 +68,32 @@ func (rr *RecordResult) Identifier() string {
     panic("Cannot find header 'identifier'")
 }
 
+// Runs an XPath expression over the content.  This expression expects a boolean result.
+func (rr *RecordResult) RunXPath(expr string) (bool, error) {
+    doc, err := gokogiri.ParseXml([]byte(rr.Content))
+    if err != nil {
+        return false, err
+    }
+
+    xpe := xpath.Compile(expr)
+    defer xpe.Free()
+
+    xp := xpath.NewXPath(doc.DocPtr())
+    xp.RegisterNamespace("o", "http://www.openarchives.org/OAI/2.0/")
+    xp.RegisterNamespace("gmd", "http://www.isotc211.org/2005/gmd")
+    xp.RegisterNamespace("gco", "http://www.isotc211.org/2005/gco")
+    xp.RegisterNamespace("gml", "http://www.opengis.net/gml/3.2")
+    xp.RegisterNamespace("gts", "http://www.isotc211.org/2005/gts")
+    xp.RegisterNamespace("dc", "http://www.openarchives.org/OAI/2.0/oai_dc/")
+
+    err = xp.Evaluate(doc.Root().NodePtr(), xpe)
+    if err != nil {
+        panic(err)
+    }
+
+    b, err := xp.ResultAsBoolean()
+    return b, err
+}
 
 // =================================================================================
 // The Oaipmh Session

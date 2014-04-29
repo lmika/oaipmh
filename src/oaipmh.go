@@ -61,6 +61,9 @@ func main() {
     command.On("harvest", "Harvest records and save them as files", &HarvestCommand{
         Ctx: ctx,
     })
+    command.On("search", "Harvest records and search the contents using XPath", &SearchCommand{
+        Ctx: ctx,
+    })
     command.On("serve", "Start a OAI-PMH provider to host the records on", &HostCommand{
         Ctx: ctx,
     })
