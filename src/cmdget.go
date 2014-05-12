@@ -7,6 +7,7 @@ import (
     "flag"
     "log"
     "strings"
+    "encoding/xml"
 )
 
 
@@ -17,14 +18,12 @@ import (
 type GetCommand struct {
     Ctx             *Context
     header          *bool
-    wholeResponse   *bool
     separator       *string
     count           int
 }
 
 func (gc *GetCommand) Flags(fs *flag.FlagSet) *flag.FlagSet {
     gc.header = fs.Bool("H", false, "Display record header")
-    gc.wholeResponse = fs.Bool("R", false, "Display entire OAI-PMH response")
     gc.separator = fs.String("s", "====", "Record separator")
 
     return fs
@@ -66,29 +65,18 @@ func (gc *GetCommand) displayRecord(id string) {
         fmt.Printf("%s\n", *(gc.separator))
     }
 
-    if *(gc.wholeResponse) {
-        payload, err := gc.Ctx.Session.GetRecordPayload(id)
-        if (err == nil) {
-            fmt.Println(payload)
+    resp, err := gc.Ctx.Session.GetRecord(id)
+    if (err == nil) {
+        if *(gc.header) {
+            fmt.Printf("Id:\t%s\n", resp.Header.Identifier)
+            fmt.Printf("Date:\t%s\n", resp.Header.DateStamp.String())
+            fmt.Printf("Sets:\t%s\n", strings.Join(resp.Header.SetSpec, ", "))
         } else {
-            log.Printf("Error: Cannot get record '%s', %s", id, err.Error())
+            fmt.Print(xml.Header)
+            fmt.Println(strings.TrimSpace(resp.Content.Xml))
         }
     } else {
-        resp, err := gc.Ctx.Session.GetRecord(id)
-        if (err == nil) {
-            if *(gc.header) {
-                fmt.Printf("Identifier: %s\n", resp.Header.Identifier)
-                fmt.Printf("Date: %s\n", resp.Header.DateStamp.String())
-                fmt.Printf("Sets: %s\n", strings.Join(resp.Header.SetSpec, ", "))
-                //for _, header := range resp.Header {
-                //   fmt.Printf("%s: %s\n", header[0], header[1])
-                //}
-            } else {
-                fmt.Print(resp.Content)
-            }
-        } else {
-            log.Printf("Error: Cannot get record '%s', %s", id, err.Error())
-        }
+        log.Printf("Error: Cannot get record '%s', %s", id, err.Error())
     }
     gc.count++
 }

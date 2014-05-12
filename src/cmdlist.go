@@ -72,11 +72,11 @@ func (lc *ListCommand) listIdentifiers() {
 
     args := lc.genListIdentifierArgsFromCommandLine()
 
-    err := lc.Ctx.Session.ListIdentifiers(args, *(lc.firstResult), *(lc.maxResults), func(res ListIdentifierResult) bool {
+    err := lc.Ctx.Session.ListIdentifiers(args, *(lc.firstResult), *(lc.maxResults), func(res *HeaderResult) bool {
         if (res.Deleted) {
             deletedCount += 1
         } else {
-            fmt.Printf("%s\n", res.Identifier)
+            fmt.Printf("%s\n", res.Identifier())
         }
         return true
     })
@@ -96,15 +96,15 @@ func (lc *ListCommand) listIdentifiers() {
 func (lc *ListCommand) listIdentifiersInDetail() {
     args := lc.genListIdentifierArgsFromCommandLine()
 
-    lc.Ctx.Session.ListIdentifiers(args, *(lc.firstResult), *(lc.maxResults), func(res ListIdentifierResult) bool {
+    lc.Ctx.Session.ListIdentifiers(args, *(lc.firstResult), *(lc.maxResults), func(res *HeaderResult) bool {
         if (res.Deleted) {
             fmt.Printf("D ")
         } else {
             fmt.Printf(". ")
         }
-        fmt.Printf("%-20s ", res.Sets[0])
-        fmt.Printf("%-20s  ", res.Datestamp)
-        fmt.Printf("%s\n", res.Identifier)
+        fmt.Printf("%-20s ", res.Header.SetSpec[0])
+        fmt.Printf("%-20s  ", res.Header.DateStamp.String())
+        fmt.Printf("%s\n", res.Identifier())
         return true
     })
 }

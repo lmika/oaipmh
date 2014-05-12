@@ -181,9 +181,9 @@ func (lc *HarvestCommand) harvest() {
         // Get the list and pass it to the getters in parallel
         mr := lc.setupParallelHarvester()
 
-        lc.Ctx.Session.ListIdentifiers(args, *(lc.firstResult), *(lc.maxResults), func(res ListIdentifierResult) bool {
+        lc.Ctx.Session.ListIdentifiers(args, *(lc.firstResult), *(lc.maxResults), func(res *HeaderResult) bool {
             if (! res.Deleted) {
-                mr.Push(res.Identifier)
+                mr.Push(res.Identifier())
                 return true
             } else {
                 lc.deletedCount++

@@ -31,15 +31,16 @@ type SearchCommand struct {
 // Callbacks for the HarvesterObserver
 
 func (sc *SearchCommand) OnRecord(recordResult *RecordResult) {
-    res, err := recordResult.RunXPath(sc.xpath)
-    if (err != nil) {
-        log.Printf("Record %s: XPath Error: %s\n", recordResult.Identifier(), err.Error())
-    } else if (res) {
-        fmt.Println(recordResult.Identifier())
-        sc.hits++
-    } else {
-        sc.misses++
-    }
+    panic("Not supported yet")
+//    res, err := recordResult.RunXPath(sc.xpath)
+//    if (err != nil) {
+//        log.Printf("Record %s: XPath Error: %s\n", recordResult.Identifier(), err.Error())
+//    } else if (res) {
+ //       fmt.Println(recordResult.Identifier())
+ //       sc.hits++
+//    } else {
+//        sc.misses++
+//    }
 }
 
 func (sc *SearchCommand) OnError(err error) {

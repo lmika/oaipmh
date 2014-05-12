@@ -10,7 +10,6 @@ import (
     "flag"
     "fmt"
     "os"
-    "log"
 
     "github.com/lmika/command"
 )
@@ -93,9 +92,7 @@ func main() {
 
     if (*debug) {
         ctx.Debug = true
-        ctx.Session.SetUrlTraceFunction(func(url string) {
-            log.Printf("%s\n", url)
-        })
+        ctx.Session.SetDebug(true)
     }
 
     // Run the command
