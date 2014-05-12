@@ -1,7 +1,10 @@
 package main
 
 import (
+    "log"
     "os"
+    "os/user"
+    "path/filepath"
 
     "code.google.com/p/gcfg"
 )
@@ -39,8 +42,14 @@ func ReadConfig() *Config {
         Provider:  make(map[string]*Provider),
     }
 
+    u, err := user.Current()
+    if (err != nil) {
+        log.Println("Error trying to get local user.  Using default config.  Error = %s\n", err.Error())
+        return c
+    }
+
     // Read the home config file
-    homeConfig := os.ExpandEnv("${HOME}/.oaipmh.cfg")
+    homeConfig := filepath.Join(u.HomeDir, ".oaipmh.cfg")
 
     if _, err := os.Stat(homeConfig) ; err == nil {
         err := gcfg.ReadFileInto(c, homeConfig)
