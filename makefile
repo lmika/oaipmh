@@ -1,16 +1,17 @@
+GO = go
 TARGET = oaipmh
 VER = 1.1
 
 RELEASE_ZIP = oaipmh-viewer-$(VER).zip
 RELEASE_DIR = oaipmh-viewer-$(VER)
 
-all: clean oaipmh
+all: clean $(TARGET) test
 
 deps:
-	go get 'github.com/moovweb/gokogiri'
-	go get 'github.com/lmika/command'
-	go get 'code.google.com/p/gcfg'
-	go get 'github.com/nu7hatch/gouuid'
+	$(GO) get -u 'github.com/moovweb/gokogiri'
+	$(GO) get -u 'github.com/lmika/command'
+	$(GO) get -u 'code.google.com/p/gcfg'
+	$(GO) get -u 'github.com/nu7hatch/gouuid'
 
 clean:
 	-rm $(TARGET)
@@ -22,5 +23,8 @@ release: clean all
 	cp $(TARGET) $(RELEASE_DIR)
 	zip -r $(RELEASE_ZIP) $(RELEASE_DIR)
 
-oaipmh: src/*.go
-	( cd src ; go build -o ../$(TARGET) )
+$(TARGET): src/*.go
+	( cd src ; $(GO) build -o ../$(TARGET) )
+
+test: oaipmh
+	( cd src ; go test )

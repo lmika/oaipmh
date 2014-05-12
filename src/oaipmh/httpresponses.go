@@ -9,20 +9,50 @@ import (
 )
 
 
+type OaipmhResponsePayload interface{}
+
+
 type OaipmhResponse struct {
     XMLName         xml.Name                `xml:"http://www.openarchives.org/OAI/2.0/ OAI-PMH"`
     Date            time.Time               `xml:"responseDate"`
     Request         OaipmhResponseRequest   `xml:"request"`
-    Payload         OaipmhResponsePayload
+
+    // Possible response types.  Only ONE of these may be set at one type
+    Error                   *OaipmhError
+    Identify                *OaipmhIdentify
+    ListMetadataFormats     *OaipmhListMetadataFormats
+    ListSets                *OaipmhListSets
+    ListIdentifiers         *OaipmhListIdentifiers
+    ListRecords             *OaipmhListRecords
+    GetRecord               *OaipmhGetRecord
 }
+
+func (res *OaipmhResponse) SetPayload(p OaipmhResponsePayload) {
+    switch r := p.(type) {
+        case *OaipmhError:
+            res.Error = r
+        case *OaipmhIdentify:
+            res.Identify = r
+        case *OaipmhListMetadataFormats:
+            res.ListMetadataFormats = r
+        case *OaipmhListSets:
+            res.ListSets = r
+        case *OaipmhListIdentifiers:
+            res.ListIdentifiers = r
+        case *OaipmhListRecords:
+            res.ListRecords = r
+        case *OaipmhGetRecord:
+            res.GetRecord = r
+        default:
+            panic("Invalid oaipmh response payload")
+    }
+}
+
 
 type OaipmhResponseRequest struct {
     Host            string                  `xml:",chardata"`
     Verb            string                  `xml:"verb,attr"`
 }
-
-// Response payload
-type OaipmhResponsePayload interface{}
 
 // Payload for an error
 type OaipmhError struct {
@@ -71,16 +101,17 @@ type OaipmhListRecords struct {
 
 // Header
 type OaipmhHeader struct {
-    Identifier      string                  `xml:"identifier"`
-    DateStamp       time.Time               `xml:"datestamp"`
-    SetSpec         string                  `xml:"setSpec"`
+    Identifier      string                  `xml:"http://www.openarchives.org/OAI/2.0/ identifier"`
+    DateStamp       time.Time               `xml:"http://www.openarchives.org/OAI/2.0/ datestamp"`
+    SetSpec         []string                `xml:"http://www.openarchives.org/OAI/2.0/ setSpec"`
+    Status          string                  `xml:"status,attr"`
 }
 
 func RecordToOaipmhHeader(rec *Record) OaipmhHeader {
     return OaipmhHeader{
         Identifier: rec.ID,
         DateStamp: rec.Date.In(time.UTC),
-        SetSpec: rec.Set,
+        SetSpec: []string { rec.Set },
     }
 }
 

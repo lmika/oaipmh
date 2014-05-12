@@ -63,14 +63,14 @@ func (h *Handler) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
         return
     }
 
-    fullResponse := OaipmhResponse{
+    fullResponse := &OaipmhResponse{
         Date: time.Now().In(time.UTC),
         Request: OaipmhResponseRequest{
             Host: "http://" + req.Host + "/",
             Verb: verb,
         },
-        Payload: payload,
     }
+    fullResponse.SetPayload(payload)
 
     s, err := xml.MarshalIndent(fullResponse, "  ", "    ")
     if (err != nil) {

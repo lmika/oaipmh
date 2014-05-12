@@ -6,6 +6,7 @@ import (
     "os"
     "flag"
     "log"
+    "strings"
 )
 
 
@@ -76,9 +77,12 @@ func (gc *GetCommand) displayRecord(id string) {
         resp, err := gc.Ctx.Session.GetRecord(id)
         if (err == nil) {
             if *(gc.header) {
-                for _, header := range resp.Header {
-                    fmt.Printf("%s: %s\n", header[0], header[1])
-                }
+                fmt.Printf("Identifier: %s\n", resp.Header.Identifier)
+                fmt.Printf("Date: %s\n", resp.Header.DateStamp.String())
+                fmt.Printf("Sets: %s\n", strings.Join(resp.Header.SetSpec, ", "))
+                //for _, header := range resp.Header {
+                //   fmt.Printf("%s: %s\n", header[0], header[1])
+                //}
             } else {
                 fmt.Print(resp.Content)
             }
