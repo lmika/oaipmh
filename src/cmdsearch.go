@@ -5,6 +5,7 @@ import (
     "flag"
     "os"
     "fmt"
+    "strings"
 )
 
 // --------------------------------------------------------------------------------
@@ -23,7 +24,7 @@ type SearchCommand struct {
     firstResult         *int
     maxResults          *int
 
-    xpath               string
+    matchNode           RecordMatchNode
     hits                int
     misses              int
 }
@@ -31,16 +32,15 @@ type SearchCommand struct {
 // Callbacks for the HarvesterObserver
 
 func (sc *SearchCommand) OnRecord(recordResult *RecordResult) {
-    panic("Not supported yet")
-//    res, err := recordResult.RunXPath(sc.xpath)
-//    if (err != nil) {
-//        log.Printf("Record %s: XPath Error: %s\n", recordResult.Identifier(), err.Error())
-//    } else if (res) {
- //       fmt.Println(recordResult.Identifier())
- //       sc.hits++
-//    } else {
-//        sc.misses++
-//    }
+    res, hasRes, err := sc.matchNode.Match(recordResult)
+    if (err != nil) {
+        log.Printf("Record %s: XPath Error: %s\n", recordResult.Identifier(), err.Error())
+    } else if (hasRes) {
+        fmt.Printf("%s: %s\n", recordResult.Identifier(), strings.TrimSpace(res))
+        sc.hits++
+    } else {
+        sc.misses++
+    }
 }
 
 func (sc *SearchCommand) OnError(err error) {
@@ -103,10 +103,17 @@ func (sc *SearchCommand) Flags(fs *flag.FlagSet) *flag.FlagSet {
 // Runs the harvester
 func (sc *SearchCommand) Run(args []string) {
     if (len(args) != 1) {
-        fmt.Fprintf(os.Stderr, "Usage: cmdsearch <xpath>\n")
+        fmt.Fprintf(os.Stderr, "Usage: cmdsearch <expr>\n")
+        os.Exit(1)
     }
 
-    sc.xpath = args[0]
+    // Attempt to parse the expression
+    matchNode, err := ParseRecordMatchExpr(args[0])
+    if (err != nil) {
+        log.Fatal(err)
+    }
+
+    sc.matchNode = matchNode
 
     harvester := sc.makeHarvester()
     harvester.Harvest(sc)

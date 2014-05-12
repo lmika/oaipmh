@@ -11,6 +11,7 @@ deps:
 	$(GO) get -u 'github.com/lmika/command'
 	$(GO) get -u 'code.google.com/p/gcfg'
 	$(GO) get -u 'github.com/nu7hatch/gouuid'
+	$(GO) get -u 'launchpad.net/xmlpath'
 
 clean:
 	-rm $(TARGET)
