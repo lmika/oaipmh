@@ -56,3 +56,4 @@ func (rh *ListRecordHarvester) Harvest(observer HarvesterObserver) {
 
     observer.OnCompleted(harvested, skipped, errors)
 }
+

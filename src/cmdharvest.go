@@ -9,6 +9,8 @@ import (
     "flag"
     "time"
     "log"
+
+    "./mapreduce"
 )
 
 
@@ -136,8 +138,8 @@ func (lc *HarvestCommand) withError(err error) {
 
 // Setup a map reduce parallel worker for downloading records from a source.  The mapping
 // function is expected to be given URNs.
-func (lc *HarvestCommand) setupParallelHarvester() *SimpleMapReduce {
-    return NewSimpleMapReduce(*(lc.downloadWorkers), 100, *(lc.downloadWorkers) * 5).
+func (lc *HarvestCommand) setupParallelHarvester() *mapreduce.SimpleMapReduce {
+    return mapreduce.NewSimpleMapReduce(*(lc.downloadWorkers), 100, *(lc.downloadWorkers) * 5).
             Map(func (id interface{}) interface{} {
                 rec, err := lc.Ctx.Session.GetRecord(id.(string))
                 if (err == nil) {
@@ -148,7 +150,7 @@ func (lc *HarvestCommand) setupParallelHarvester() *SimpleMapReduce {
             }).
             Reduce(func (recs chan interface{}) {
                 // Retrieves either a *RecordResult or an error
-                for rec, hasMore := <-recs ; hasMore ; rec, hasMore = <-recs {
+                for rec := range recs {
                     switch r := rec.(type) {
                         case *RecordResult:
                             lc.withRecord(r)

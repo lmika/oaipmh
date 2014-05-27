@@ -1,4 +1,5 @@
-package main
+// A simple map/reduce worker.
+package mapreduce
 
 
 // The map function
@@ -19,7 +20,7 @@ type SimpleMapReduce struct {
     reducedFinished     chan bool
 }
 
-// Creates a new worker
+// Creates a new worker.
 func NewSimpleMapReduce(mappers int, mapQueueSize int, reduceQueueSize int) *SimpleMapReduce {
     return &SimpleMapReduce{
         mappers:         mappers,
@@ -27,10 +28,7 @@ func NewSimpleMapReduce(mappers int, mapQueueSize int, reduceQueueSize int) *Sim
         mapFn:           func (item interface{}) interface{} {
             return item
         },
-        reduceFn:        func (items chan interface{}) {
-            for _, isOpened := <-items; isOpened; _, isOpened = <-items {
-            }
-        },
+        reduceFn:        nil,
         workQueue:       make(chan interface{}, mapQueueSize),
         reduceQueue:     make(chan interface{}, reduceQueueSize),
         mappersFinished: make([]chan bool, mappers),
@@ -65,19 +63,24 @@ func (w *SimpleMapReduce) Start() *SimpleMapReduce {
 
         // Parallel function which performs the map and adds the result to the reduction queue
         go func() {
-            for item, gotItem := <-w.workQueue ; gotItem ; item, gotItem = <-w.workQueue {
+            for item := range w.workQueue {
                 res := mapFn(item)
                 w.reduceQueue <- res
             }
-            mapperFinished <- true
+            close(mapperFinished)
         }()
     }
 
-    // Starts the reduction function.  This is single threaded.
-    go func() {
-        w.reduceFn(w.reduceQueue)
-        w.reducedFinished <- true
-    }()
+    // If a reduction function is specified, start it.  Otherwise, simply close the reducedFinish
+    // channel.
+    if (w.reduceFn != nil) {
+        go func() {
+            w.reduceFn(w.reduceQueue)
+            close(w.reducedFinished)
+        }()
+    } else {
+        close(w.reducedFinished)
+    }
 
     return w
 }

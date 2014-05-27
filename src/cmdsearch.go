@@ -34,7 +34,7 @@ type SearchCommand struct {
 func (sc *SearchCommand) OnRecord(recordResult *RecordResult) {
     res, hasRes, err := sc.matchNode.Match(recordResult)
     if (err != nil) {
-        log.Printf("Record %s: XPath Error: %s\n", recordResult.Identifier(), err.Error())
+        log.Printf("Record %s: Error: %s\n", recordResult.Identifier(), err.Error())
     } else if (hasRes) {
         fmt.Printf("%s: %s\n", recordResult.Identifier(), strings.TrimSpace(res))
         sc.hits++
