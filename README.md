@@ -114,6 +114,70 @@ directory and compressing directories once filled:
 
     $ oaipmh 'http://wis.metoffice.gov.uk/openwis-user-portal/srv/oaipmh' harvest -F urns.txt -D 20000 -W 8 -C
 
+### search
+
+Retrieve records from a provider and performs a search query over them.
+
+    search [FLAGS] QUERY
+
+Supported flags are:
+
+- `-A`, `-B`, `-c`, `-f`, `-s`: same as the flags of `list`.  These are used to select the records to retrieve.
+- `-F`, `-L`: same as the flags of `harvest`.  *Not yet supported*
+
+The query is an expression with the following syntax:
+
+    query       :=  predicate
+    predicate   :=  predicatename "(" argument ")"
+
+Valid predicates are:
+
+- *xpath*: `xp( <xpath> )` - Performs an restricted XPath expression over the metadata and returns the element value that matches the path as the search result.  The XPath expression does not require namespaces.
+
+Metadata that matches the search expression will be listed to stdout in the following form:
+
+    <urn>: <searchResult>
+
+**Example**: search for metadata records with an 'environmentDescription' element in all sets from the *eg* provider:
+
+    $ oaipmh eg search -s "" 'xp("//environmentDescription")'
+
+### serve
+
+Starts a temporary OAI-PMH endpoint and serves metadata organised into files and directories.  Used mainly for testing.
+
+    serve 
+
+The tool is to be started in the directory containing the files to serve.
+The provider URL is treated as the hostname and port that the endpoint will listen on.
+
+The tool expects all metadata to be arranged into directories, with each directory representing a set.  The directory name
+will be used as the set name and the metadata within the directory will belong to that set.  Records must be XML: non XML
+files will not be recognised by the endpoint.  Record files must 
+
+**Example**: start serving all metadata managed in the current directory over port 8080 on localhost.
+
+    $ oaipmh "localhost:8080" serve 
+
+**Example**: session showing arrangement of files and directories
+
+    $ tree
+        set1
+            record1.xml
+            record2.xml
+        set2
+            record3.xml
+            record4.xml
+    $ oaipmh "localhost:8080" serve &
+    $ oaipmh "http://localhost:8080/" sets
+    set1
+    set2
+    $ oaipmh "http://localhost:8080/" list -s set1
+    record1
+    record2
+
+
+
 Configuration
 -------------
 
