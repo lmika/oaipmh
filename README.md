@@ -29,9 +29,10 @@ is one of the following commands listed below.
 
 ### Global Flags
 
-- `-P`: List the set of provider aliases, then exit.
 - `-d`: Enable debugging output.
 - `-p <prefix>`: Set the OAI-PMH prefix.  Default is "iso19139".
+- `-P`: List the set of provider aliases, then exit.
+- `-V`: Display the version number, then exit.
 
 Commands
 --------
