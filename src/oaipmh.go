@@ -15,7 +15,7 @@ import (
 )
 
 const APP_NAME string = "oaipmh-viewer"
-const APP_VERSION string = "0.1"
+const APP_VERSION string = "1.1"
 
 // Flags
 var prefix *string = flag.String("p", "iso19139", "The record prefix to retrieve")
