@@ -76,7 +76,6 @@ Retrieve records from the provider and display them to STDOUT.
 Supported flags are:
 
 - `-H`: Display the header of the record instead of the record itself.
-- `-R`: Display the entire OAI-PMH response.  Useful for debugging.
 - `-S`: Specify the separator line to use when returning multiple records.
 
 Following the flags is a list of identifiers to retrieve.  When multiple records are returned, they will be separated by a
