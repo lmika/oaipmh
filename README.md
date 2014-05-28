@@ -121,7 +121,6 @@ Retrieve records from a provider and performs a search query over them.
 Supported flags are:
 
 - `-A`, `-B`, `-c`, `-f`, `-s`: same as the flags of `list`.  These are used to select the records to retrieve.
-- `-F`, `-L`: same as the flags of `harvest`.  *Not yet supported*
 
 The query is an expression with the following syntax:
 

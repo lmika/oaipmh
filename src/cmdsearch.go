@@ -73,9 +73,9 @@ func (sc *SearchCommand) genListIdentifierArgsFromCommandLine() ListIdentifierAr
 func (sc *SearchCommand) makeHarvester() Harvester {
     la := sc.genListIdentifierArgsFromCommandLine()
 
-    if *(sc.fromFile) != "" {
+    if (sc.fromFile != nil) && *(sc.fromFile) != "" {
         panic("From file is not yet supported")
-    } else if *(sc.listAndGet) {
+    } else if  (sc.listAndGet != nil) && *(sc.listAndGet) {
         panic("ListAndGet is not yet supported")
     } else {
         return &ListRecordHarvester{
@@ -90,11 +90,11 @@ func (sc *SearchCommand) makeHarvester() Harvester {
 // Startup flags
 func (sc *SearchCommand) Flags(fs *flag.FlagSet) *flag.FlagSet {
     sc.setName = fs.String("s", "\x00", "Select records from this set")
-    sc.listAndGet = fs.Bool("L", false, "Use list and get instead of ListRecord")
+//    sc.listAndGet = fs.Bool("L", false, "Use list and get instead of ListRecord")
     sc.beforeDate = fs.String("B", "", "Select records that were updated before date (YYYY-MM-DD)")
     sc.afterDate = fs.String("A", "", "Select records that were updated after date (YYYY-MM-DD)")
     sc.firstResult = fs.Int("f", 0, "Index of first record to retrieve")
-    sc.fromFile = fs.String("F", "", "Read identifiers from a file")
+//    sc.fromFile = fs.String("F", "", "Read identifiers from a file")
     sc.maxResults = fs.Int("c", 100000, "Maximum number of records to retrieve")
 
     return fs
