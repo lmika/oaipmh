@@ -94,12 +94,17 @@ func (lc *ListCommand) listIdentifiers() {
 
 // List the identifiers in detail from a provider
 func (lc *ListCommand) listIdentifiersInDetail() {
+    var activeCount int = 0
+    var deletedCount int = 0
+
     args := lc.genListIdentifierArgsFromCommandLine()
 
     lc.Ctx.Session.ListIdentifiers(args, *(lc.firstResult), *(lc.maxResults), func(res *HeaderResult) bool {
         if (res.Deleted) {
+            deletedCount++
             fmt.Printf("D ")
         } else {
+            activeCount++
             fmt.Printf(". ")
         }
         fmt.Printf("%-20s ", res.Header.SetSpec[0])
@@ -107,6 +112,8 @@ func (lc *ListCommand) listIdentifiersInDetail() {
         fmt.Printf("%s\n", res.Identifier())
         return true
     })
+
+    fmt.Fprintf(os.Stderr, "%d records: %d active, %d deleted\n", activeCount + deletedCount, activeCount, deletedCount)
 }
 
 func (lc *ListCommand) Flags(fs *flag.FlagSet) *flag.FlagSet {
