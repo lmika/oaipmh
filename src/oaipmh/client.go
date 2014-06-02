@@ -19,6 +19,8 @@ func (e ENoMore) Error() string {
     return "No more results"
 }
 
+
+
 // An OAI-PMH error
 type EOaipmhError struct {
     Code        string
