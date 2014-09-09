@@ -59,7 +59,8 @@ Supported flags are:
 - `-B <yyyy-mm-dd>`: List identifiers with date-stamps occurring before the given date (in local time).
 - `-c <count>`: Maximum number of results to return.  Defaults to 100,000.  Use -1 to return all results.
 - `-f <number>`: The first result to return.  For example: `-f 3` will start listing from the 3rd result.
-- `-l`: Display a detailed listing.  This will also display deleted identifiers.
+- `-l`: Display a detailed listing.  This will also display deleted identifiers, and will produce a summary of the number of metadata records to
+    standard error.
 - `-s`: Specify the set to retrieve.  When not specified, uses the "default set" if one is defined (see Configuration) or list identifiers from all sets.
 
 By default only active identifiers are displayed.  To view deleted identifiers, use the `-l` flag.
@@ -78,6 +79,8 @@ Supported flags are:
 
 - `-H`: Display the header of the record instead of the record itself.
 - `-S`: Specify the separator line to use when returning multiple records.
+- `-t`: Test for the presence of records by getting them.  This will display the record identifiers with either a `+`
+    indicating that the record was retrieved successfully, or a `-` if there was an error of some sort.
 
 Following the flags is a list of identifiers to retrieve.  When multiple records are returned, they will be separated by a
 separator, line with will either be the argument to `-S`, or 4 equal (`=`) signs.  Identifiers can be read from a file
