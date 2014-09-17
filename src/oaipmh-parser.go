@@ -138,6 +138,38 @@ func (op *OaipmhSession) ListIdentifiers(listArgs ListIdentifierArgs, firstResul
     return op.stifleNoResultErrors(err)
 }
 
+// Returns a list of identifiers using the ListRecord verb
+func (op *OaipmhSession) ListIdentifiersUsingListRecords(listArgs ListIdentifierArgs, firstResult int, maxResults int, callback func(res *HeaderResult) bool) error {
+    var err error
+
+    ri, err := op.client.ListRecords(oaipmh.ListArgs{
+        Prefix: op.prefix,
+        From: listArgs.From,
+        Until: listArgs.Until,
+        Set: listArgs.Set,
+    })
+    if (err != nil) {
+        return op.stifleNoResultErrors(err)
+    }
+
+    err = op.iteratorSubset(ri, firstResult, maxResults, func(i oaipmh.RecordIterator) error {
+        h, err2 := i.Record()
+        if (err2 != nil) {
+            return err2
+        }
+        hc := new(oaipmh.OaipmhHeader)
+        *hc = h.Header
+        res := &HeaderResult{ hc, h.Header.Status == "deleted" }
+        if !callback(res) {
+            return oaipmh.ENoMore{}
+        } else {
+            return nil
+        }
+    })
+
+    return op.stifleNoResultErrors(err)
+}
+
 // Returns a list of records
 func (op *OaipmhSession) ListRecords(listArgs ListIdentifierArgs, firstResult int, maxResults int, callback func(recordResult *RecordResult) bool) error {
     var err error

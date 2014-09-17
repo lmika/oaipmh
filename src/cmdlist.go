@@ -19,7 +19,11 @@ type ListCommand struct {
     flagDetailed    *bool
     firstResult     *int
     maxResults      *int
+    listRecords     *bool
 }
+
+
+type listingFn  func(listArgs ListIdentifierArgs, firstResult int, maxResults int, callback func(res *HeaderResult) bool) error
 
 
 // Attempt to parse a date string and return it as a heap allocated time.Time.
@@ -66,13 +70,24 @@ func (lc *ListCommand) genListIdentifierArgsFromCommandLine() ListIdentifierArgs
 }
 
 
+// Returns the appropriate listing function.
+func (lc *ListCommand) getListingFn() listingFn {
+    if *(lc.listRecords) {
+        return listingFn(lc.Ctx.Session.ListIdentifiersUsingListRecords)
+    } else {
+        return listingFn(lc.Ctx.Session.ListIdentifiers)
+    }
+}
+
+
 // List the identifiers from a provider
 func (lc *ListCommand) listIdentifiers() {
     var deletedCount int = 0
 
     args := lc.genListIdentifierArgsFromCommandLine()
+    listFn := lc.getListingFn()
 
-    err := lc.Ctx.Session.ListIdentifiers(args, *(lc.firstResult), *(lc.maxResults), func(res *HeaderResult) bool {
+    err := listFn(args, *(lc.firstResult), *(lc.maxResults), func(res *HeaderResult) bool {
         if (res.Deleted) {
             deletedCount += 1
         } else {
@@ -98,8 +113,9 @@ func (lc *ListCommand) listIdentifiersInDetail() {
     var deletedCount int = 0
 
     args := lc.genListIdentifierArgsFromCommandLine()
+    listFn := lc.getListingFn()
 
-    lc.Ctx.Session.ListIdentifiers(args, *(lc.firstResult), *(lc.maxResults), func(res *HeaderResult) bool {
+    listFn(args, *(lc.firstResult), *(lc.maxResults), func(res *HeaderResult) bool {
         if (res.Deleted) {
             deletedCount++
             fmt.Printf("D ")
@@ -123,6 +139,7 @@ func (lc *ListCommand) Flags(fs *flag.FlagSet) *flag.FlagSet {
     lc.flagDetailed = fs.Bool("l", false, "Use detailed listing format")
     lc.firstResult = fs.Int("f", 0, "Index of first record to retrieve")
     lc.maxResults = fs.Int("c", 100000, "Maximum number of records to retrieve")
+    lc.listRecords = fs.Bool("R", false, "Use ListRecord instead of ListIdentifier")
 
     return fs
 }
