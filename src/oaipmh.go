@@ -51,20 +51,20 @@ func main() {
     command.OnHelpShowUsage()
     command.OnHelpIgnorePreargs()
 
-    command.On("sets", "List sets", &SetsCommand{ Ctx: ctx, })
-    command.On("list", "List identifiers", &ListCommand{ Ctx: ctx, })
-    command.On("get", "Get records", &GetCommand{ Ctx: ctx, }).Arguments("<record>")
-    command.On("harvest", "Harvest records and save them as files", &HarvestCommand{ Ctx: ctx, })
-    command.On("search", "Harvest records and search the contents using XPath", &SearchCommand{ Ctx: ctx, })
-    command.On("serve", "Start a OAI-PMH provider to host the records on", &HostCommand{ Ctx: ctx, })
+    command.On("sets", "List sets", &SetsCommand{ Ctx: ctx, }).Arguments()
+    command.On("list", "List identifiers", &ListCommand{ Ctx: ctx, }).Arguments()
+    command.On("get", "Get records", &GetCommand{ Ctx: ctx, }).Arguments("record", "...")
+    command.On("harvest", "Harvest records and save them as files", &HarvestCommand{ Ctx: ctx, }).Arguments()
+    command.On("search", "Harvest records and search the contents using XPath", &SearchCommand{ Ctx: ctx, }).Arguments()
+    command.On("serve", "Start a OAI-PMH provider to host the records on", &HostCommand{ Ctx: ctx, }).Arguments()
 
     providerUrl := command.PreArg("provider", "URL to the OAI-PMH provider")
 
     // Parse the command
-    res := command.TryParse()
-    if (res != command.TryParseOK) {
+    err := command.TryParse()
+    if (err != nil) {
 
-        // Handle flags which do not require a command
+        // Handle flags which do not require a command.
         if (*listProvidersFlag) {
             listProviders(ctx)
             os.Exit(0)
@@ -72,19 +72,13 @@ func main() {
             displayVersionInfo()
             os.Exit(0)
         } else {
-            command.Usage()
+            err.(command.TryParseError).Usage()
             os.Exit(1)
         }
     }
 
     // Create the OAI-PMH session
-    var err error
-    ctx.Provider, err = ctx.Config.LookupProvider(*providerUrl)
-    if (err != nil) {
-        fmt.Fprintf(os.Stderr, "Invalid URL or endpoint: %s\n", *providerUrl)
-        os.Exit(1)
-    }
-
+    ctx.Provider = ctx.Config.LookupProvider(*providerUrl)
     if (ctx.Provider != nil) {
         ctx.Session = NewOaipmhSession(ctx.Provider.Url, *prefix)
     }

@@ -5,8 +5,6 @@ import (
     "os"
     "os/user"
     "path/filepath"
-    "strings"
-    "errors"
 
     "code.google.com/p/gcfg"
 )
@@ -28,17 +26,15 @@ type Config struct {
 }
 
 // Looks up a provider.  If one is not defined, creates a dummy provider.
-func (cfg *Config) LookupProvider(endpoint string) (*Provider, error) {
+func (cfg *Config) LookupProvider(endpoint string) *Provider {
     if endpoint == "" {
-        return nil, nil
+        return nil
     }
 
     if prov, hasProv := cfg.Provider[endpoint] ; hasProv {
-        return prov, nil
-    } else if strings.HasPrefix(endpoint, "http") {
-        return &Provider{ Url: endpoint }, nil
+        return prov
     } else {
-        return nil, errors.New("Invalid endpoint or url: " + endpoint)
+        return &Provider{ Url: endpoint }
     }
 }
 
