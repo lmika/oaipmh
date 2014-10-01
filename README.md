@@ -61,6 +61,7 @@ Supported flags are:
 - `-f <number>`: The first result to return.  For example: `-f 3` will start listing from the 3rd result.
 - `-l`: Display a detailed listing.  This will also display deleted identifiers, and will produce a summary of the number of metadata records to
     standard error.
+- `-R`: Use the ListRecords verb instead of ListIdentifiers verb.  This is useful mainly for testing.
 - `-s`: Specify the set to retrieve.  When not specified, uses the "default set" if one is defined (see Configuration) or list identifiers from all sets.
 
 By default only active identifiers are displayed.  To view deleted identifiers, use the `-l` flag.

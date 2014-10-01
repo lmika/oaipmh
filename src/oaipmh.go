@@ -48,24 +48,15 @@ func main() {
         Config: ReadConfig(),
     }
 
-    command.On("sets", "List sets", &SetsCommand{
-        Ctx: ctx,
-    })
-    command.On("list", "List identifiers", &ListCommand{
-        Ctx: ctx,
-    })
-    command.On("get", "Get records", &GetCommand{
-        Ctx: ctx,
-    })
-    command.On("harvest", "Harvest records and save them as files", &HarvestCommand{
-        Ctx: ctx,
-    })
-    command.On("search", "Harvest records and search the contents using XPath", &SearchCommand{
-        Ctx: ctx,
-    })
-    command.On("serve", "Start a OAI-PMH provider to host the records on", &HostCommand{
-        Ctx: ctx,
-    })
+    command.OnHelpShowUsage()
+    command.OnHelpIgnorePreargs()
+
+    command.On("sets", "List sets", &SetsCommand{ Ctx: ctx, })
+    command.On("list", "List identifiers", &ListCommand{ Ctx: ctx, })
+    command.On("get", "Get records", &GetCommand{ Ctx: ctx, }).Arguments("<record>")
+    command.On("harvest", "Harvest records and save them as files", &HarvestCommand{ Ctx: ctx, })
+    command.On("search", "Harvest records and search the contents using XPath", &SearchCommand{ Ctx: ctx, })
+    command.On("serve", "Start a OAI-PMH provider to host the records on", &HostCommand{ Ctx: ctx, })
 
     providerUrl := command.PreArg("provider", "URL to the OAI-PMH provider")
 
@@ -87,10 +78,18 @@ func main() {
     }
 
     // Create the OAI-PMH session
-    ctx.Provider = ctx.Config.LookupProvider(*providerUrl)
-    ctx.Session = NewOaipmhSession(ctx.Provider.Url, *prefix)
+    var err error
+    ctx.Provider, err = ctx.Config.LookupProvider(*providerUrl)
+    if (err != nil) {
+        fmt.Fprintf(os.Stderr, "Invalid URL or endpoint: %s\n", *providerUrl)
+        os.Exit(1)
+    }
 
-    if (*debug) {
+    if (ctx.Provider != nil) {
+        ctx.Session = NewOaipmhSession(ctx.Provider.Url, *prefix)
+    }
+
+    if (*debug) && (ctx.Session != nil) {
         ctx.Debug = true
         ctx.Session.SetDebug(true)
     }
