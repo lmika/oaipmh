@@ -55,7 +55,7 @@ func main() {
     command.On("list", "List identifiers", &ListCommand{ Ctx: ctx, }).Arguments()
     command.On("get", "Get records", &GetCommand{ Ctx: ctx, }).Arguments("record", "...")
     command.On("harvest", "Harvest records and save them as files", &HarvestCommand{ Ctx: ctx, }).Arguments()
-    command.On("search", "Harvest records and search the contents using XPath", &SearchCommand{ Ctx: ctx, }).Arguments()
+    command.On("search", "Harvest records and search the contents using XPath", &SearchCommand{ Ctx: ctx, }).Arguments("expr")
     command.On("serve", "Start a OAI-PMH provider to host the records on", &HostCommand{ Ctx: ctx, }).Arguments()
 
     providerUrl := command.PreArg("provider", "URL to the OAI-PMH provider")

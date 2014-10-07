@@ -5,7 +5,6 @@ import (
     "flag"
     "os"
     "fmt"
-    "strings"
 )
 
 // --------------------------------------------------------------------------------
@@ -23,8 +22,11 @@ type SearchCommand struct {
     fromFile            *string
     firstResult         *int
     maxResults          *int
+    invertMatch         *bool
+    urnOnly             *bool
+    valueOnly           *bool
 
-    matchNode           RecordMatchNode
+    matchNode           RecordSearcher
     hits                int
     misses              int
 }
@@ -32,11 +34,28 @@ type SearchCommand struct {
 // Callbacks for the HarvesterObserver
 
 func (sc *SearchCommand) OnRecord(recordResult *RecordResult) {
-    res, hasRes, err := sc.matchNode.Match(recordResult)
+    hasRes, res, err := sc.matchNode.SearchRecord(recordResult)
     if (err != nil) {
         log.Printf("Record %s: Error: %s\n", recordResult.Identifier(), err.Error())
-    } else if (hasRes) {
-        fmt.Printf("%s: %s\n", recordResult.Identifier(), strings.TrimSpace(res))
+    }
+
+    var matches bool = hasRes
+    var showUrn bool = !*(sc.valueOnly)
+    var showValue bool = !*(sc.urnOnly)
+    if *(sc.invertMatch) {
+        matches = !matches
+        showValue = false       // Cannot show the value of unmatching result
+    }
+
+    // Display the results
+    if (matches) {
+        if showUrn && showValue {
+            fmt.Printf("%s: %s\n", recordResult.Identifier(), res)
+        } else if showUrn {
+            fmt.Printf("%s\n", recordResult.Identifier())
+        } else if showValue {
+            fmt.Printf("%s\n", res)
+        }
         sc.hits++
     } else {
         sc.misses++
@@ -96,6 +115,9 @@ func (sc *SearchCommand) Flags(fs *flag.FlagSet) *flag.FlagSet {
     sc.firstResult = fs.Int("f", 0, "Index of first record to retrieve")
 //    sc.fromFile = fs.String("F", "", "Read identifiers from a file")
     sc.maxResults = fs.Int("c", 100000, "Maximum number of records to retrieve")
+    sc.invertMatch = fs.Bool("v", false, "Inverts the match.  Implies -h")
+    sc.urnOnly = fs.Bool("l", false, "Only show the URN")
+    sc.valueOnly = fs.Bool("h", false, "Only show the value")
 
     return fs
 }
