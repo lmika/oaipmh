@@ -37,6 +37,10 @@ type RecordResult struct {
     Deleted         bool
 }
 
+func (r *RecordResult) AsHeaderResult() *HeaderResult {
+    return &HeaderResult{&(r.Header), r.Deleted}
+}
+
 func (r *RecordResult) Identifier() string {
     return r.Header.Identifier
 }

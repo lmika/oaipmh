@@ -9,8 +9,6 @@ import (
     "flag"
     "time"
     "log"
-
-    "./mapreduce"
 )
 
 
@@ -34,8 +32,6 @@ type HarvestCommand struct {
 
     dirPrefix           string
     recordCount         int
-    deletedCount        int
-    errorCount          int
     lastDirId           int
 }
 
@@ -104,17 +100,6 @@ func (lc *HarvestCommand) closeDir(dirId int) {
     }
 }
 
-// Handle the record harvested
-func (lc *HarvestCommand) withRecord(res *RecordResult) bool {
-    if (! res.Deleted) {
-        lc.saveRecord(res)
-    } else {
-        lc.deletedCount++
-    }
-    return true
-}
-
-
 func (lc *HarvestCommand) saveRecord(res *RecordResult) {
     lc.recordCount++
     dirId := (lc.recordCount / *(lc.maxDirSize)) + 1
@@ -135,52 +120,19 @@ func (lc *HarvestCommand) saveRecord(res *RecordResult) {
     }
 }
 
+
+// Contract with the HarvesterObserver
+
 func (lc *HarvestCommand) OnRecord(rr *RecordResult) {
     lc.saveRecord(rr)
-}
-
-// Handles an error returned
-func (lc *HarvestCommand) withError(err error) {
-    log.Printf("ERROR: %s\n", err)
-    lc.errorCount++
 }
 
 func (lc *HarvestCommand) OnError(err error) {
     log.Printf("ERROR: %s\n", err)
 }
 
-func (lc *HarvestCommand) OnCompleted(harvested int, skippedDeleted int, errors int) {
-    lc.recordCount = harvested
-    lc.deletedCount = skippedDeleted
-    lc.errorCount = errors
-}
-
-// Setup a map reduce parallel worker for downloading records from a source.  The mapping
-// function is expected to be given URNs.
-func (lc *HarvestCommand) setupParallelHarvester() *mapreduce.SimpleMapReduce {
-    return mapreduce.NewSimpleMapReduce(*(lc.downloadWorkers), 100, *(lc.downloadWorkers) * 5).
-            Map(func (id interface{}) interface{} {
-                rec, err := lc.Ctx.Session.GetRecord(id.(string))
-                if (err == nil) {
-                    return rec
-                } else {
-                    return err
-                }
-            }).
-            Reduce(func (recs chan interface{}) {
-                // Retrieves either a *RecordResult or an error
-                for rec := range recs {
-                    switch r := rec.(type) {
-                        case *RecordResult:
-                            lc.withRecord(r)
-                        case error:
-                            lc.withError(r)
-                        default:
-                            panic("Expected either an recordResult or an error")
-                    }
-                }
-            }).
-            Start()
+func (lc *HarvestCommand) OnCompleted(harvested int, skipped int, errors int) {
+    log.Printf("Finished: %d records harvested, %d records skipped, %d errors", harvested, skipped, errors)
 }
 
 // Harvest the records using a specific harvester
@@ -190,11 +142,12 @@ func (lc *HarvestCommand) harvestWithHarvester(harvester Harvester) {
 
 // List the identifiers from a provider
 func (lc *HarvestCommand) harvest() {
+    var harvester Harvester
     args := lc.genListIdentifierArgsFromCommandLine()
 
     if *(lc.fromFile) != "" {
         // Setup a map-reduce queue for fetching responses in parallel
-        fh := &FileHarvester{
+        harvester = &FileHarvester{
             Session:        lc.Ctx.Session,
             Filename:       *(lc.fromFile),
             FirstResult:    *(lc.firstResult),
@@ -202,30 +155,28 @@ func (lc *HarvestCommand) harvest() {
             Workers:        *(lc.downloadWorkers),
             Guard:          LiveRecordsPredicate,
         }
-        lc.harvestWithHarvester(fh)
     } else if *(lc.listAndGet) {
         // Get the list and pass it to the getters in parallel
-        mr := lc.setupParallelHarvester()
-
-        lc.Ctx.Session.ListIdentifiers(args, *(lc.firstResult), *(lc.maxResults), func(res *HeaderResult) bool {
-            if (! res.Deleted) {
-                mr.Push(res.Identifier())
-                return true
-            } else {
-                lc.deletedCount++
-                return true
-            }
-        })
-
-        mr.Close()
+        harvester = &ListAndGetRecordHarvester{
+            Session:        lc.Ctx.Session,
+            ListArgs:       args,
+            FirstResult:    *(lc.firstResult),
+            MaxResults:     *(lc.maxResults),
+            Workers:        *(lc.downloadWorkers),
+            HarvestGuard:   LiveRecordsHeaderPredicate,
+            Guard:          LiveRecordsPredicate,
+        }
     } else {
-        lc.Ctx.Session.ListRecords(args, *(lc.firstResult), *(lc.maxResults), lc.withRecord)
+        harvester = &ListRecordHarvester{
+            Session:        lc.Ctx.Session,
+            ListArgs:       args,
+            FirstResult:    *(lc.firstResult),
+            MaxResults:     *(lc.maxResults),
+            Guard:          LiveRecordsPredicate,
+        }
     }
 
-    if (lc.deletedCount > 0) {
-        fmt.Fprintf(os.Stderr, "oaipmh: %d deleted record(s) not harvested.\n", lc.deletedCount)
-    }
-
+    lc.harvestWithHarvester(harvester)
 }
 
 func (lc *HarvestCommand) Flags(fs *flag.FlagSet) *flag.FlagSet {
@@ -250,5 +201,4 @@ func (lc *HarvestCommand) Run(args []string) {
     lc.harvest()
     lc.closeDir(lc.lastDirId)
 
-    log.Printf("Finished: %d records harvested, %d records skipped, %d errors", lc.recordCount, lc.deletedCount, lc.errorCount)
 }

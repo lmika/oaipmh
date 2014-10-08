@@ -30,15 +30,29 @@ type HarvesterObserver interface {
 }
 
 
-// A predicate which will select records
+// A predicate which matches headers.
+type HeaderPredicate    func(hr *HeaderResult) bool
+
+// A predicate which will select records.
 type RecordPredicate    func(rr *RecordResult) bool
 
-// A predicate which will select all records
+
+// A header predicate which will select all records
+func AllRecordsHeaderPredicate(hr *HeaderResult) bool {
+    return true
+}
+
+// A records predicate which will select all records
 func AllRecordsPredicate(rr *RecordResult) bool {
     return true
 }
 
 // A predicate which will only select records that are not deleted
+func LiveRecordsHeaderPredicate(rr *HeaderResult) bool {
+    return !rr.Deleted
+}
+
+// A records predicate which will select only records that are live
 func LiveRecordsPredicate(rr *RecordResult) bool {
     return !rr.Deleted
 }
@@ -107,13 +121,21 @@ type ListRecordHarvester struct {
     ListArgs        ListIdentifierArgs
     FirstResult     int
     MaxResults      int
+
+    Guard           RecordPredicate
 }
 
 // Starts the harvesting task.
 func (rh *ListRecordHarvester) Harvest(observer HarvesterObserver) {
+    pred := rh.Guard
+    if pred == nil {
+        pred = AllRecordsPredicate
+    }
+
+
     var harvested, skipped, errors int = 0, 0, 0
     err := rh.Session.ListRecords(rh.ListArgs, rh.FirstResult, rh.MaxResults, func(rr *RecordResult) bool {
-        if (! rr.Deleted) {
+        if (pred(rr)) {
             observer.OnRecord(rr)
             harvested++
         } else {
@@ -128,6 +150,65 @@ func (rh *ListRecordHarvester) Harvest(observer HarvesterObserver) {
     }
 
     observer.OnCompleted(harvested, skipped, errors)
+}
+
+// --------------------------------------------------------------------------
+// ListAndGetRecordHarvester
+//      A harvester which uses the OAI-PMH "ListIdentifier" and "ListRecord" query.
+//      This harvester is a parallel based harvester as well.
+
+type ListAndGetRecordHarvester struct {
+    Session         *OaipmhSession
+    ListArgs        ListIdentifierArgs
+    FirstResult     int
+    MaxResults      int
+    Workers         int
+
+    // A guard which will only queue records for harvesting with headers that match
+    // this predicate.
+    HarvestGuard    HeaderPredicate
+
+    Guard           RecordPredicate
+}
+
+// Starts the harvesting task.
+func (lgh *ListAndGetRecordHarvester) Harvest(observer HarvesterObserver) {
+    pred := lgh.Guard
+    if pred == nil {
+        pred = AllRecordsPredicate
+    }
+
+    headPred := lgh.HarvestGuard
+    if headPred == nil {
+        headPred = AllRecordsHeaderPredicate
+    }
+
+    // The map reducer does not keep track of records and errors, so embed an observer
+    // to do this.
+    countingObserver := &CountingObserver{ Predicate: pred }
+    observers := HarvesterObservers([]HarvesterObserver { observer, countingObserver })
+
+    mr := newGetRecordMapReducer(lgh.Session, observers, lgh.Workers, pred)
+    mr.Start()
+
+    // Feed the data
+    err := lgh.Session.ListIdentifiers(lgh.ListArgs, lgh.FirstResult, lgh.MaxResults, func(res *HeaderResult) bool {
+        if (headPred(res)) {
+            mr.Push(res.Identifier())
+            return true
+        } else {
+            countingObserver.Skipped++
+            return true
+        }
+    })
+    mr.Close()
+
+    if err != nil {
+        observers.OnError(err)
+    }
+
+    // Send the completed signal
+    observer.OnCompleted(countingObserver.Selected, countingObserver.Skipped, countingObserver.Errors)
 }
 
 // ----------------------------------------------------------------------
