@@ -48,3 +48,9 @@ func LinesFromFile(filename string, firstResult int, maxResults int, callback fu
         return nil
     }
 }
+
+// Displays an error message and kills the program.
+func Die(fmtstr string, args ...interface{}) {
+    fmt.Fprintf(os.Stderr, fmtstr, args)
+    os.Exit(1)
+}

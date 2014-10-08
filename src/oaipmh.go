@@ -51,6 +51,7 @@ func main() {
     command.OnHelpShowUsage()
     command.OnHelpIgnorePreargs()
 
+    command.On("compare", "Compare providers", &CompareCommand{ Ctx: ctx, }).Arguments("otherProvider")
     command.On("sets", "List sets", &SetsCommand{ Ctx: ctx, }).Arguments()
     command.On("list", "List identifiers", &ListCommand{ Ctx: ctx, }).Arguments()
     command.On("get", "Get records", &GetCommand{ Ctx: ctx, }).Arguments("record", "...")
