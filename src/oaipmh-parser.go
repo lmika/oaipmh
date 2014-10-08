@@ -189,7 +189,7 @@ func (op *OaipmhSession) ListRecords(listArgs ListIdentifierArgs, firstResult in
         if (err2 != nil) {
             return err2
         }
-        res := &RecordResult{ h.Header, h.Content.Xml, h.Header.Status == "deleted" }
+        res := RecordToRecordResult(h)
         if !callback(res) {
             return oaipmh.ENoMore{}
         } else {
@@ -222,4 +222,10 @@ func (op *OaipmhSession) GetRecord(id string) (*oaipmh.OaipmhRecord, error) {
     } else {
         return rec, nil
     }
+}
+
+
+// Converts an OaipmhRecord into a RecordResult
+func RecordToRecordResult(r *oaipmh.OaipmhRecord) *RecordResult {
+    return &RecordResult{ r.Header, r.Content.Xml, r.Header.Status == "deleted" }
 }

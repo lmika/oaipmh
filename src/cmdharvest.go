@@ -63,7 +63,7 @@ func (lc *HarvestCommand) dirName(dirId int) string {
 }
 
 // Saves the record
-func (lc *HarvestCommand) saveRecord(dirId int, res *RecordResult) {
+func (lc *HarvestCommand) saveRecordToDir(dirId int, res *RecordResult) {
     id := res.Identifier()
     dir := lc.dirName(dirId)
     outFile := fmt.Sprintf("%s/%s.xml", dir, id)
@@ -107,33 +107,52 @@ func (lc *HarvestCommand) closeDir(dirId int) {
 // Handle the record harvested
 func (lc *HarvestCommand) withRecord(res *RecordResult) bool {
     if (! res.Deleted) {
-        lc.recordCount++
-        dirId := (lc.recordCount / *(lc.maxDirSize)) + 1
-        if (dirId != lc.lastDirId) {
-            lc.closeDir(lc.lastDirId)
-            lc.lastDirId = dirId
-        }
-
-        if (lc.Ctx.Debug) {
-            log.Printf("%8d  %s\n", lc.recordCount, res.Identifier())
-        }
-        if ((lc.recordCount % 1000) == 0) {
-            log.Printf("Harvested %d records\n", lc.recordCount)
-        }
-
-        if (! *(lc.dryRun)) {
-            lc.saveRecord(dirId, res)
-        }
+        lc.saveRecord(res)
     } else {
         lc.deletedCount++
     }
     return true
 }
 
+
+func (lc *HarvestCommand) saveRecord(res *RecordResult) {
+    lc.recordCount++
+    dirId := (lc.recordCount / *(lc.maxDirSize)) + 1
+    if (dirId != lc.lastDirId) {
+        lc.closeDir(lc.lastDirId)
+        lc.lastDirId = dirId
+    }
+
+    if (lc.Ctx.Debug) {
+        log.Printf("%8d  %s\n", lc.recordCount, res.Identifier())
+    }
+    if ((lc.recordCount % 1000) == 0) {
+        log.Printf("Harvested %d records\n", lc.recordCount)
+    }
+
+    if (! *(lc.dryRun)) {
+        lc.saveRecordToDir(dirId, res)
+    }
+}
+
+func (lc *HarvestCommand) OnRecord(rr *RecordResult) {
+    lc.saveRecord(rr)
+}
+
 // Handles an error returned
 func (lc *HarvestCommand) withError(err error) {
     log.Printf("ERROR: %s\n", err)
     lc.errorCount++
+}
+
+func (lc *HarvestCommand) OnError(err error) {
+    log.Printf("ERROR: %s\n", err)
+}
+
+func (lc *HarvestCommand) OnCompleted(harvested int, skippedDeleted int, errors int) {
+    lc.recordCount = harvested
+    lc.deletedCount = skippedDeleted
+    lc.errorCount = errors
 }
 
 // Setup a map reduce parallel worker for downloading records from a source.  The mapping
@@ -164,21 +183,26 @@ func (lc *HarvestCommand) setupParallelHarvester() *mapreduce.SimpleMapReduce {
             Start()
 }
 
+// Harvest the records using a specific harvester
+func (lc *HarvestCommand) harvestWithHarvester(harvester Harvester) {
+    harvester.Harvest(lc)
+}
+
 // List the identifiers from a provider
 func (lc *HarvestCommand) harvest() {
     args := lc.genListIdentifierArgsFromCommandLine()
 
     if *(lc.fromFile) != "" {
         // Setup a map-reduce queue for fetching responses in parallel
-        mr := lc.setupParallelHarvester()
-
-        // Push records from a file
-        LinesFromFile(*(lc.fromFile), *(lc.firstResult), *(lc.maxResults), func(id string) bool {
-            mr.Push(id)
-            return true
-        })
-        mr.Close()
-
+        fh := &FileHarvester{
+            Session:        lc.Ctx.Session,
+            Filename:       *(lc.fromFile),
+            FirstResult:    *(lc.firstResult),
+            MaxResults:     *(lc.maxResults),
+            Workers:        *(lc.downloadWorkers),
+            Guard:          LiveRecordsPredicate,
+        }
+        lc.harvestWithHarvester(fh)
     } else if *(lc.listAndGet) {
         // Get the list and pass it to the getters in parallel
         mr := lc.setupParallelHarvester()
@@ -226,5 +250,5 @@ func (lc *HarvestCommand) Run(args []string) {
     lc.harvest()
     lc.closeDir(lc.lastDirId)
 
-    log.Printf("Finished: %d records harvested, %d deleted records, %d errors", lc.recordCount, lc.deletedCount, lc.errorCount)
+    log.Printf("Finished: %d records harvested, %d records skipped, %d errors", lc.recordCount, lc.deletedCount, lc.errorCount)
 }
