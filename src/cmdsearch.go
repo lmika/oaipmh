@@ -25,6 +25,7 @@ type SearchCommand struct {
     invertMatch         *bool
     urnOnly             *bool
     valueOnly           *bool
+    downloadWorkers     *int
 
     matchNode           RecordSearcher
     hits                int
@@ -92,16 +93,33 @@ func (sc *SearchCommand) genListIdentifierArgsFromCommandLine() ListIdentifierAr
 func (sc *SearchCommand) makeHarvester() Harvester {
     la := sc.genListIdentifierArgsFromCommandLine()
 
-    if (sc.fromFile != nil) && *(sc.fromFile) != "" {
-        panic("From file is not yet supported")
+    if *(sc.fromFile) != "" {
+        return &FileHarvester{
+            Session:        sc.Ctx.Session,
+            Filename:       *(sc.fromFile),
+            FirstResult:    *(sc.firstResult),
+            MaxResults:     *(sc.maxResults),
+            Workers:        *(sc.downloadWorkers),
+            Guard:          LiveRecordsPredicate,
+        }
     } else if  (sc.listAndGet != nil) && *(sc.listAndGet) {
-        panic("ListAndGet is not yet supported")
+        return &ListAndGetRecordHarvester{
+            Session:        sc.Ctx.Session,
+            ListArgs:       la,
+            FirstResult:    *(sc.firstResult),
+            MaxResults:     *(sc.maxResults),
+            Workers:        *(sc.downloadWorkers),
+            HarvestGuard:   LiveRecordsHeaderPredicate,
+            Guard:          LiveRecordsPredicate,
+        }
+
     } else {
         return &ListRecordHarvester{
-            Session: sc.Ctx.Session,
-            ListArgs: la,
-            FirstResult: *(sc.firstResult),
-            MaxResults: *(sc.maxResults),
+            Session:        sc.Ctx.Session,
+            ListArgs:       la,
+            FirstResult:    *(sc.firstResult),
+            MaxResults:     *(sc.maxResults),
+            Guard:          LiveRecordsPredicate,
         }
     }
 }
@@ -109,15 +127,16 @@ func (sc *SearchCommand) makeHarvester() Harvester {
 // Startup flags
 func (sc *SearchCommand) Flags(fs *flag.FlagSet) *flag.FlagSet {
     sc.setName = fs.String("s", "\x00", "Select records from this set")
-//    sc.listAndGet = fs.Bool("L", false, "Use list and get instead of ListRecord")
+    sc.listAndGet = fs.Bool("L", false, "Use list and get instead of ListRecord")
     sc.beforeDate = fs.String("B", "", "Select records that were updated before date (YYYY-MM-DD)")
     sc.afterDate = fs.String("A", "", "Select records that were updated after date (YYYY-MM-DD)")
     sc.firstResult = fs.Int("f", 0, "Index of first record to retrieve")
-//    sc.fromFile = fs.String("F", "", "Read identifiers from a file")
+    sc.fromFile = fs.String("F", "", "Read identifiers from a file")
     sc.maxResults = fs.Int("c", 100000, "Maximum number of records to retrieve")
     sc.invertMatch = fs.Bool("v", false, "Inverts the match.  Implies -h")
     sc.urnOnly = fs.Bool("l", false, "Only show the URN")
     sc.valueOnly = fs.Bool("h", false, "Only show the value")
+    sc.downloadWorkers = fs.Int("W", 4, "Number of download workers running in parallel")
 
     return fs
 }
