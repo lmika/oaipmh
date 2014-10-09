@@ -54,3 +54,36 @@ func TestStartWith(t *testing.T) {
         t.Error("rec2 must not match")
     }
 }
+
+// Test the nonEmpty predicate
+func TestNonEmptyValues(t *testing.T) {
+    assertSearchExpr(t, `"This is not empty"`, "<xml></xml>", true, "This is not empty")
+    assertSearchExpr(t, `"")`, "<xml></xml>", false, "")
+    assertSearchExpr(t, `xp("/xml/value")`, "<xml>This has<value>a value</value> set</xml>", true, "a value")
+    assertSearchExpr(t, `xp("/xml/missing")`, "<xml>This has<value>a value</value> set</xml>", false, "")
+    assertSearchExpr(t, `xp("/xml/value")`, "<xml>This has<value attr=\"some attribute\" /> set</xml>", false, "")
+    assertSearchExpr(t, `xp("/xml/value/@attr")`, "<xml>This has<value attr=\"some attribute\" /> set</xml>", true, "some attribute")
+}
+
+
+func assertSearchExpr(t *testing.T, expr string, xml string, expectedVal bool, expectedValue string) {
+    rs, err := ParseRecordMatchExpr(expr)
+    if err != nil {
+        t.Error(err)
+        return
+    }
+
+    rec1 := &RecordResult{}
+    rec1.Content = xml
+
+    r, v, _ := rs.SearchRecord(rec1)
+
+    if r != expectedVal {
+        t.Error("Result of expression must be %v but was %v", expectedVal, r)
+        return
+    }
+    if v != expectedValue {
+        t.Error("Value of expression must be %v but was %v", expectedValue, v)
+        return
+    }
+}
