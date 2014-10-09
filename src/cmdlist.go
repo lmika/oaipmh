@@ -20,6 +20,7 @@ type ListCommand struct {
     firstResult     *int
     maxResults      *int
     listRecords     *bool
+    showDeleted     *bool
 }
 
 
@@ -89,6 +90,9 @@ func (lc *ListCommand) listIdentifiers() {
 
     err := listFn(args, *(lc.firstResult), *(lc.maxResults), func(res *HeaderResult) bool {
         if (res.Deleted) {
+            if *(lc.showDeleted) {
+                fmt.Printf("%s\n", res.Identifier())
+            }
             deletedCount += 1
         } else {
             fmt.Printf("%s\n", res.Identifier())
@@ -98,7 +102,11 @@ func (lc *ListCommand) listIdentifiers() {
 
     if (err == nil) {
         if (deletedCount > 0) {
-            fmt.Fprintf(os.Stderr, "oaipmh: %d deleted record(s) not displayed.\n", deletedCount)
+            if *(lc.showDeleted) {
+                fmt.Fprintf(os.Stderr, "oaipmh: %d deleted record(s) displayed\n", deletedCount)
+            } else {
+                fmt.Fprintf(os.Stderr, "oaipmh: %d deleted record(s) not displayed\n", deletedCount)
+            }
         }
     } else {
         fmt.Fprintf(os.Stderr, "oaipmh: %s\n", err.Error())
@@ -116,16 +124,27 @@ func (lc *ListCommand) listIdentifiersInDetail() {
     listFn := lc.getListingFn()
 
     listFn(args, *(lc.firstResult), *(lc.maxResults), func(res *HeaderResult) bool {
+        var showRecord bool
+
         if (res.Deleted) {
             deletedCount++
-            fmt.Printf("D ")
+            showRecord = *(lc.showDeleted)
         } else {
             activeCount++
-            fmt.Printf(". ")
+            showRecord = true
         }
-        fmt.Printf("%-20s ", res.Header.SetSpec[0])
-        fmt.Printf("%-20s  ", res.Header.DateStamp.String())
-        fmt.Printf("%s\n", res.Identifier())
+
+        if (showRecord) {
+            if (res.Deleted) {
+                fmt.Printf("D ")
+            } else {
+                fmt.Printf(". ")
+            }
+
+            fmt.Printf("%-20s ", res.Header.SetSpec[0])
+            fmt.Printf("%-20s  ", res.Header.DateStamp.String())
+            fmt.Printf("%s\n", res.Identifier())
+        }
         return true
     })
 
@@ -137,6 +156,7 @@ func (lc *ListCommand) Flags(fs *flag.FlagSet) *flag.FlagSet {
     lc.beforeDate = fs.String("B", "", "Select records that were updated before date (YYYY-MM-DD)")
     lc.afterDate = fs.String("A", "", "Select records that were updated after date (YYYY-MM-DD)")
     lc.flagDetailed = fs.Bool("l", false, "Use detailed listing format")
+    lc.showDeleted = fs.Bool("d", false, "Show deleted records")
     lc.firstResult = fs.Int("f", 0, "Index of first record to retrieve")
     lc.maxResults = fs.Int("c", 100000, "Maximum number of records to retrieve")
     lc.listRecords = fs.Bool("R", false, "Use ListRecord instead of ListIdentifier")
