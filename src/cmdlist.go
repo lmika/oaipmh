@@ -21,6 +21,7 @@ type ListCommand struct {
     maxResults      *int
     listRecords     *bool
     showDeleted     *bool
+    onlyShowDeleted *bool
 }
 
 
@@ -80,6 +81,18 @@ func (lc *ListCommand) getListingFn() listingFn {
     }
 }
 
+// Returns true if the specific header should be shown.  This uses the options specified
+// by the user.
+func (lc *ListCommand) configuredToShowRecord(header *HeaderResult) bool {
+    if *lc.showDeleted {
+        return true
+    } else if *lc.onlyShowDeleted {
+        return header.Deleted
+    } else {
+        return !header.Deleted
+    }
+}
+
 
 // List the identifiers from a provider
 func (lc *ListCommand) listIdentifiers() {
@@ -89,22 +102,24 @@ func (lc *ListCommand) listIdentifiers() {
     listFn := lc.getListingFn()
 
     err := listFn(args, *(lc.firstResult), *(lc.maxResults), func(res *HeaderResult) bool {
-        if (res.Deleted) {
-            if *(lc.showDeleted) {
-                fmt.Printf("%s\n", res.Identifier())
-            }
-            deletedCount += 1
-        } else {
+        if lc.configuredToShowRecord(res) {
             fmt.Printf("%s\n", res.Identifier())
         }
+
+        if (res.Deleted) {
+            deletedCount += 1
+        }
+
         return true
     })
 
     if (err == nil) {
         if (deletedCount > 0) {
             if *(lc.showDeleted) {
+                // If onlyShowDeleted is active, the user expects the deleted records displayed so
+                // don't bother showing anything.
                 fmt.Fprintf(os.Stderr, "oaipmh: %d deleted record(s) displayed\n", deletedCount)
-            } else {
+            } else if !*lc.onlyShowDeleted {
                 fmt.Fprintf(os.Stderr, "oaipmh: %d deleted record(s) not displayed\n", deletedCount)
             }
         }
@@ -124,17 +139,13 @@ func (lc *ListCommand) listIdentifiersInDetail() {
     listFn := lc.getListingFn()
 
     listFn(args, *(lc.firstResult), *(lc.maxResults), func(res *HeaderResult) bool {
-        var showRecord bool
-
         if (res.Deleted) {
             deletedCount++
-            showRecord = *(lc.showDeleted)
         } else {
             activeCount++
-            showRecord = true
         }
 
-        if (showRecord) {
+        if lc.configuredToShowRecord(res) {
             if (res.Deleted) {
                 fmt.Printf("D ")
             } else {
@@ -156,7 +167,8 @@ func (lc *ListCommand) Flags(fs *flag.FlagSet) *flag.FlagSet {
     lc.beforeDate = fs.String("B", "", "Select records that were updated before date (YYYY-MM-DD)")
     lc.afterDate = fs.String("A", "", "Select records that were updated after date (YYYY-MM-DD)")
     lc.flagDetailed = fs.Bool("l", false, "Use detailed listing format")
-    lc.showDeleted = fs.Bool("d", false, "Show deleted records")
+    lc.showDeleted = fs.Bool("d", false, "Show deleted records, along with active ones")
+    lc.onlyShowDeleted = fs.Bool("D", false, "Only show deleted records")
     lc.firstResult = fs.Int("f", 0, "Index of first record to retrieve")
     lc.maxResults = fs.Int("c", 100000, "Maximum number of records to retrieve")
     lc.listRecords = fs.Bool("R", false, "Use ListRecord instead of ListIdentifier")
