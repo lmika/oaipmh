@@ -7,7 +7,7 @@ import (
     "os"
     "time"
 
-    "./oaipmh"
+    "github.com/lmika-bom/oaipmh/client"
 )
 
 

@@ -2,7 +2,7 @@ package main
 
 
 import (
-    "./oaipmh"
+    "github.com/lmika-bom/oaipmh/client"
 
     "flag"
     "log"

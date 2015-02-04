@@ -24,9 +24,13 @@ type CompareCommand struct {
     firstResult         *int
     maxResults          *int
 
+    compareContent      *bool
+
     urnsInBoth          int
     missingUrns         int
     redundentUrns       int
+    urnsDiffering       int
+    errors              int
 }
 
 // Startup flags
@@ -37,6 +41,7 @@ func (sc *CompareCommand) Flags(fs *flag.FlagSet) *flag.FlagSet {
     sc.firstResult = fs.Int("f", 0, "Index of first record to retrieve")
     sc.fromFile = fs.String("F", "", "Read identifiers from a file")
     sc.maxResults = fs.Int("c", 100000, "Maximum number of records to retrieve")
+    sc.compareContent = fs.Bool("C", false, "Compares the metadata content of common metadata records")
 
     return fs
 }
@@ -123,6 +128,26 @@ func (sc *CompareCommand) runPresenceComparator() {
 // Called by the presence comparison lister with URNs that are present in both providers.
 func (sc *CompareCommand) UrnPresentInBothProviders(urn string) {
     sc.urnsInBoth++
+
+    // Compare both records if in comparison mode
+    if *sc.compareContent {
+        thisRec, err := sc.Ctx.Session.GetRecord(urn)
+        if err != nil {
+            fmt.Println("E ", urn)
+            sc.errors++
+        }
+
+        otherRec, err := sc.OtherSession.GetRecord(urn)
+        if err != nil {
+            fmt.Println("E ", urn)
+            sc.errors++
+        }
+
+        if thisRec.Content.Xml != otherRec.Content.Xml {
+            fmt.Println("D ", urn)
+            sc.urnsDiffering++
+        }
+    }
 }
 
 // Called by the presence comparison lister with URNs that is in the expected provider but missing
@@ -157,7 +182,12 @@ func (sc *CompareCommand) Run(args []string) {
     // Runs the presence comparator
     sc.runPresenceComparator()
 
-    log.Printf("Comparison complete: %d OK, %d missing, %d redundent", sc.urnsInBoth, sc.missingUrns, sc.redundentUrns)
+    if *sc.compareContent {
+        log.Printf("Comparison complete: %d OK, %d different, %d missing, %d redundent, %d errors", 
+                sc.urnsInBoth, sc.urnsDiffering, sc.missingUrns, sc.redundentUrns, sc.errors)
+    } else {
+        log.Printf("Comparison complete: %d OK, %d missing, %d redundent", sc.urnsInBoth, sc.missingUrns, sc.redundentUrns)
+    }
 }
 
 

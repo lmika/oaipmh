@@ -5,7 +5,7 @@ package main
 
 import (
     "fmt"
-    "./mapreduce"
+    "github.com/lmika-bom/oaipmh/mapreduce"
 )
 
 

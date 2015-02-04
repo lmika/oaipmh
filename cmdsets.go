@@ -5,7 +5,7 @@ import (
     "strings"
     "flag"
 
-    "./oaipmh"
+    "github.com/lmika-bom/oaipmh/client"
 )
 
 
