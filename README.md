@@ -6,17 +6,21 @@ Command line tool for querying and retrieving records from OAI-PMI providers.
 Installing
 ----------
 
+If you have [go](http://golang.org/):
+
+1. Run `go get github.com/lmika-bom/oaipmh`
+
 To install the binary:
 
-1. Download the release from [here](https://github.com/lmika-bom/oaipmh-viewer/releases/latest)
+1. Download the release from [here](https://github.com/lmika-bom/oaipmh/releases/latest)
 2. Unzip the archive
 3. Add `oaipmh` to your PATH
 
 To build from source:
 
 1. Download the GO SDK from [golang.org](http://golang.org/)
-2. Run `make deps all`
-3. Add `oaipmh` to your PATH
+2. Checkout the source
+3. Run `go install ./...`
 
 
 Usage
