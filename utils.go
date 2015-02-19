@@ -54,3 +54,36 @@ func Die(fmtstr string, args ...interface{}) {
     fmt.Fprintf(os.Stderr, fmtstr, args)
     os.Exit(1)
 }
+
+
+// Escapes the characters of the passed in string so they can safely be used as a filename.
+// The characters allowed are all alphanumeric characters, ':', '-' and '.'.  Any other
+// characters will be escaped in a form similar to QueryEscape (spaces will be escaped to %20).
+//
+// These can be unescaped using url.QueryUnescape
+func EscapeIdForFilename(id string) string {
+    escapedString := make([]byte, 0, len(id))
+
+    for i := 0; i < len(id); i++ {
+        c := id[i]
+        if escapableCharacterForFilename(c) {
+            d1 := "0123456789ABCDEF"[c>>4]
+            d2 := "0123456789ABCDEF"[c&15]
+            escapedString = append(escapedString, '%', d1, d2)
+        } else {
+            escapedString = append(escapedString, c)
+        }
+    }
+
+    return string(escapedString)
+}
+
+func escapableCharacterForFilename(c byte) bool {
+    if ((c >= 'a') && (c <= 'z')) || ((c >= 'A') && (c <= 'Z')) || ((c >= '0') && (c <= '9')) {
+        return false
+    } else if (c == ':') || (c == '-') || (c == '.') || (c == '_') {
+        return false
+    } else {
+        return true
+    }
+}

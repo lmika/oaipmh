@@ -1,0 +1,12 @@
+package main
+
+func TestEscapeIdForFilename(t *testing.T) {
+
+}
+
+
+func assertStringEqual(t *testing.T, exp, actual string) {
+    if exp != actual {
+        t.Error("assertFail: expected '%s' but received '%s'", exp, actual)
+    }
+}

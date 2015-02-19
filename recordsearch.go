@@ -1,10 +1,6 @@
 // Record search.  Parses a search expression and runs it over a RecordResult returning true if the
 // record matches the expression, or false otherwise.
 //
-//  Expressions are of the form:
-//
-//      xp( <string> )          -- Run the XPath over the contents of the record, returning the
-//                                 boolean value of the xpath.
 //
 
 package main

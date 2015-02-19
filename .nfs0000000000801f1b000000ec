@@ -1,0 +1,37 @@
+package main
+
+import (
+    "testing"
+    "net/url"
+)
+
+func TestEscapeIdForFilename(t *testing.T) {
+    assertStringEqual(t, "", EscapeIdForFilename(""))
+
+    assertStringEqual(t, "abc123", EscapeIdForFilename("abc123"))
+    assertStringEqual(t, "urn:x-xmo:wis::int.wmo.wis:SSVX13", EscapeIdForFilename("urn:x-xmo:wis::int.wmo.wis:SSVX13"))
+    assertStringEqual(t, "All_valid-Characters-4_this.test", EscapeIdForFilename("All_valid-Characters-4_this.test"))
+    assertStringEqual(t, "some.file.xml", EscapeIdForFilename("some.file.xml"))
+
+    assertStringEqual(t, "spaces%20are%20here", EscapeIdForFilename("spaces are here"))
+    assertStringEqual(t, "abc%2F123", EscapeIdForFilename("abc/123"))
+    assertStringEqual(t, "someone%40somewhere%23here", EscapeIdForFilename("someone@somewhere#here"))
+    assertStringEqual(t, "%7E%60%21%40%23%24%25%5E%26%2A%28%29_%2B-%3D%5B%5D%7B%7D%5C%7C:%3B%22%27%3C%3E%2C.%3F%2F",
+        EscapeIdForFilename("~`!@#$%^&*()_+-=[]{}\\|:;\"'<>,.?/"))
+}
+
+
+func assertEscapedIdIsEqual(t *testing.T, exp, actual string) {
+    // Test escaping
+    if exp != EscapeIdForFilename(actual) {
+        t.Errorf("assertFail: expected '%s' but received '%s'", exp, actual)
+    }
+
+    // Test unescaping
+    err, unescape := url.QueryUnescape(exp)
+    if err != nil {
+        t.Error(err)
+    } else if unescape != actual {
+        t.Errorf("assertEscapedIdIsEqual: unescaping - expected '%s' but received '%s'", actual, unescape)
+    }
+}

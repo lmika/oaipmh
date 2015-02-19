@@ -1,0 +1,14 @@
+package main
+
+
+func TestEscapeIdForFilename(t *testing.T) {
+    assertStringEqual(t, "abc123", EscapeIdForFilename("abc123"))
+    assertStringEqual(t, "urn:x-xmo:wis::int.wmo.wis:SSVX13", EscapeIdForFilename("urn:x-xmo:wis::int.wmo.wis:SSVX13"))
+}
+
+
+func assertStringEqual(t *testing.T, exp, actual string) {
+    if exp != actual {
+        t.Error("assertFail: expected '%s' but received '%s'", exp, actual)
+    }
+}

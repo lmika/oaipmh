@@ -8,6 +8,7 @@ import (
     "path"
     "flag"
     "time"
+    "path/filepath"
     "log"
 )
 
@@ -62,7 +63,16 @@ func (lc *HarvestCommand) dirName(dirId int) string {
 func (lc *HarvestCommand) saveRecordToDir(dirId int, res *RecordResult) {
     id := res.Identifier()
     dir := lc.dirName(dirId)
-    outFile := fmt.Sprintf("%s/%s.xml", dir, id)
+
+    // Escape filenames to avoid invalid characters such as '/' causing
+    // potential file naming problems.
+    fileBaseName := EscapeIdForFilename(id)
+    if fileBaseName == "" {
+        log.Println("warn: using file basename '__empty__' for record with an empty identifier")
+        fileBaseName = "__empty__"
+    }
+
+    outFile := filepath.Join(dir, fileBaseName + ".xml")
 
     os.MkdirAll(dir, 0755)
 

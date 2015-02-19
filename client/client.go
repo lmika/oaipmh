@@ -78,7 +78,7 @@ func (c *Client) Fetch(verb string, vals url.Values, res *OaipmhResponse) error 
 
     // Expect a 200 response
     if resp.StatusCode != 200 {
-        return fmt.Errorf("HTTP error: %d\n", resp.Status)
+        return fmt.Errorf("HTTP error: %v\n", resp.Status)
     }
 
     // Marshal the response into the provided 'res'
