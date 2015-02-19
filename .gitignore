@@ -2,3 +2,4 @@ oaipmh
 !oaipmh/
 *.swp
 *.oaipmh.cfg
+*.nfs*
