@@ -66,7 +66,7 @@ Supported flags are:
 - `-l`: Display a detailed listing.  This will also display deleted identifiers, and will produce a summary of the number of metadata records to
     standard error.
 - `-R`: Use the ListRecords verb instead of ListIdentifiers verb.  This is useful mainly for testing.
-- `-s`: Specify the set to retrieve.  When not specified, uses the "default set" if one is defined (see Configuration) or list identifiers from all sets.
+- `-s`: Specify the set to retrieve.  Use '*' to list all sets.  When not specified, the "default set" is used if one is defined (see Configuration).
 
 By default only active identifiers are displayed.  To view deleted identifiers, use the `-l` flag.
 
@@ -128,7 +128,7 @@ Retrieve records from a provider and performs a search query over them.
 
 Supported flags are:
 
-- `-A`, `-B`, `-c`, `-f`, `-s`: same as the flags of `list`.  These are used to select the records to retrieve.
+- `-A`, `-B`, `-c`, `-f`, `-s`: same as the flags of `list`.  These are used to select the records to search.
 
 The query is an expression with the following syntax:
 
@@ -146,6 +146,25 @@ Metadata that matches the search expression will be listed to stdout in the foll
 **Example**: search for metadata records with an 'environmentDescription' element in all sets from the *eg* provider:
 
     $ oaipmh eg search -s "" 'xp("//environmentDescription")'
+
+### compare
+
+Compares the records from two providers.  The first provider is the provider that appears before the 'compare' command.
+
+    compare <otherProvider>
+
+Supported flags are:
+
+- `-A`, `-B`, `-c`, `-f`, `-s`: same as the flags of `list`.  These are used to select the records to compare.
+- `-F`: Read the identifiers to harvest from a file, instead of querying the OAI-PMH provider.  The file should be a text file with one identifier per line.
+- `-C`: Compare the content of the metadata that appears in both providers.  This will increase the comparison time significantly.
+
+The URN of differing records will be written as lines to stdout in the form `result urn`, where result is one of:
+
+- `-`: URN exists in the first provider but is missing in the second provider.
+- `+`: URN exists in the second provider but is missing from the first provider.
+- `D`: URN exists in both providers but the contents differ (only applicable if `-C` is enabled)
+- `E`: Fetching information about the URN has caused an error.
 
 ### serve
 
