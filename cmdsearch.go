@@ -76,8 +76,10 @@ func (sc *SearchCommand) genListIdentifierArgsFromCommandLine() ListIdentifierAr
     var set string
 
     set = *(sc.setName)
-    if set == "\x00" {
+    if set == "" {
         set = sc.Ctx.Provider.Set
+    } else if set == "*" {
+        set = ""
     }
 
     args := ListIdentifierArgs{
@@ -126,7 +128,7 @@ func (sc *SearchCommand) makeHarvester() Harvester {
 
 // Startup flags
 func (sc *SearchCommand) Flags(fs *flag.FlagSet) *flag.FlagSet {
-    sc.setName = fs.String("s", "\x00", "Select records from this set")
+    sc.setName = fs.String("s", "", "Select records from this set")
     sc.listAndGet = fs.Bool("L", false, "Use list and get instead of ListRecord")
     sc.beforeDate = fs.String("B", "", "Select records that were updated before date (YYYY-MM-DD)")
     sc.afterDate = fs.String("A", "", "Select records that were updated after date (YYYY-MM-DD)")

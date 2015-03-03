@@ -35,7 +35,7 @@ type CompareCommand struct {
 
 // Startup flags
 func (sc *CompareCommand) Flags(fs *flag.FlagSet) *flag.FlagSet {
-    sc.setName = fs.String("s", "\x00", "Select records from this set")
+    sc.setName = fs.String("s", "", "Select records from this set")
     sc.beforeDate = fs.String("B", "", "Select records that were updated before date (YYYY-MM-DD)")
     sc.afterDate = fs.String("A", "", "Select records that were updated after date (YYYY-MM-DD)")
     sc.firstResult = fs.Int("f", 0, "Index of first record to retrieve")
@@ -52,8 +52,10 @@ func (sc *CompareCommand) genListIdentifierArgsFromCommandLine() ListIdentifierA
     var set string
 
     set = *(sc.setName)
-    if set == "\x00" {
+    if set == "" {
         set = sc.Ctx.Provider.Set
+    } else if set == "*" {
+        set = ""
     }
 
     args := ListIdentifierArgs{

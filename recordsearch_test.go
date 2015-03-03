@@ -55,6 +55,53 @@ func TestStartWith(t *testing.T) {
     }
 }
 
+// Test the contains predicate
+func TestContains(t *testing.T) {
+    expr := `contains(xp("/a/val"), "value")`
+    rs, err := ParseRecordMatchExpr(expr)
+    if err != nil {
+        t.Error(err)
+    }
+
+    rec1 := &RecordResult{}
+    rec1.Content = "<gmd:a xmlns:gmd=\"something\"><val>Some value</val><b><d>Something</d><c>I've got C</c></b></gmd:a>"
+
+    rec2 := &RecordResult{}
+    rec2.Content = "<gmd:a xmlns:gmd=\"something\"><val>Another value</val><b><d>No C Here</d></b></gmd:a>"
+
+    if r, v, _ := rs.SearchRecord(rec1) ; !(r && (v=="Some value")) {
+        t.Error("rec1 must match")
+    }
+    if r, v, _ := rs.SearchRecord(rec2) ; !(r && (v=="Another value")) {
+        t.Error("rec2 must not match")
+    }
+}
+
+// Test the urn predicate
+func TestUrnPredicate(t *testing.T) {
+    expr := `urn`
+    rs, err := ParseRecordMatchExpr(expr)
+    if err != nil {
+        t.Error(err)
+    }
+
+    rec1 := &RecordResult{}
+    rec1.Header.Identifier = "abc123"
+    rec1.Content = "<gmd:a xmlns:gmd=\"something\"><val>Some value</val><b><d>Something</d><c>I've got C</c></b></gmd:a>"
+
+    rec2 := &RecordResult{}
+    rec2.Header.Identifier = "foobar"
+    rec2.Content = "<gmd:a xmlns:gmd=\"something\"><val>Another value</val><b><d>No C Here</d></b></gmd:a>"
+
+    if r, v, _ := rs.SearchRecord(rec1) ; !(r && (v=="abc123")) {
+        t.Error("rec1 must match")
+    }
+    if r, v, _ := rs.SearchRecord(rec2) ; !(r && (v=="foobar")) {
+        t.Error("rec2 must not match")
+    }
+}
+
+
 // Test the nonEmpty predicate
 func TestNonEmptyValues(t *testing.T) {
     assertSearchExpr(t, `"This is not empty"`, "<xml></xml>", true, "This is not empty")

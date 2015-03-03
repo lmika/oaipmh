@@ -124,6 +124,15 @@ func (lt RSExprLiteral) Evaluate(rr *RecordResult) (RSExprValue, error) {
 // ------------------------------------------------------------------------------
 //
 
+type etoken struct {
+    Expected        rune
+    Actual          rune
+}
+
+func (e *etoken) Error() string {
+    return fmt.Sprintf("Expected %s but got %s", scanner.TokenString(e.Expected), scanner.TokenString(e.Actual))
+}
+
 // Record search parser
 type recordSearchParser struct {
     scan        *scanner.Scanner
@@ -139,13 +148,19 @@ func (rsp *recordSearchParser) nextToken() {
     }
 }
 
-// Consumes a token.  Returns the token value
+// Returns true if the next token is a specific token
+func (rsp *recordSearchParser) nextTokenIs(tok rune) bool {
+    return (rsp.tok == tok)
+}
+
+// Consumes a token.  Returns the token value if it was successfully consumed, or an EToken
+// if it wasn't consumed.
 func (rsp *recordSearchParser) consume(tok rune) (txt string, err error) {
     if (rsp.tok == tok) {
         txt = rsp.tokText
         rsp.nextToken()
     } else {
-        err = fmt.Errorf("Expected %s but got %s\n", scanner.TokenString(tok), scanner.TokenString(rsp.tok))
+        err = &etoken{tok, rsp.tok}
     }
     return
 }
@@ -168,7 +183,7 @@ func (rsp *recordSearchParser) parseAtom() (RSExprAst, error) {
 }
 
 // Parses a function call
-//      <fncall>    =   <IDENT> "(" (<expr> ("," <expr>)*)? ")"
+//      <fncall>    =   <IDENT> [ "(" (<expr> ("," <expr>)*)? ")" ]
 func (rsp *recordSearchParser) parseFn() (RSExprAst, error) {
     fnName, err := rsp.consume(scanner.Ident)
     if (err != nil) {
@@ -181,30 +196,34 @@ func (rsp *recordSearchParser) parseFn() (RSExprAst, error) {
         return nil, fmt.Errorf("No such function: %s", fnName)
     }
 
-    if _, err = rsp.consume('(') ; err != nil {
-        return nil, err
-    }
+    if rsp.nextTokenIs('(') {
+        // Function with arguments
+        rsp.consume('(')
 
-    args := make([]RSExprAst, 0)
-    for rsp.tok != ')' {
-        if len(args) > 0 {
-            if _, err = rsp.consume(',') ; err != nil {
+        args := make([]RSExprAst, 0)
+        for rsp.tok != ')' {
+            if len(args) > 0 {
+                if _, err = rsp.consume(',') ; err != nil {
+                    return nil, err
+                }
+            }
+
+            if arg, err := rsp.parseExpr() ; err != nil {
                 return nil, err
+            } else {
+                args = append(args, arg)
             }
         }
 
-        if arg, err := rsp.parseExpr() ; err != nil {
+        if _, err = rsp.consume(')') ; err != nil {
             return nil, err
-        } else {
-            args = append(args, arg)
         }
-    }
 
-    if _, err = rsp.consume(')') ; err != nil {
-        return nil, err
+        return &RSExprFnCall{fn, args}, nil
+    } else {
+        // Function without arguments
+        return &RSExprFnCall{fn, make([]RSExprAst, 0)}, nil
     }
-
-    return &RSExprFnCall{fn, args}, nil
 }
 
 // Reads a string value
@@ -278,5 +297,26 @@ var NATIVE_FUNCTIONS = map[string]RSNativeFunction {
         } else {
             return RSString(""), nil
         }
+    },
+
+    // contains(<str>, <substring>)
+    //      Returns the string if it contains the substring.  Otherwise, returns the empty
+    //      string
+    "contains": func(rr *RecordResult, args []RSExprValue) (RSExprValue, error) {
+        if (len(args) != 2) {
+            return nil, fmt.Errorf("contains() expects exactly 2 argument")
+        }        
+
+        if (strings.Contains(args[0].String(), args[1].String())) {
+            return args[0], nil
+        } else {
+            return RSString(""), nil
+        }
+    },
+
+    // urn()
+    //      Returns the URN of the record
+    "urn": func(rr *RecordResult, args []RSExprValue) (RSExprValue, error) {
+        return RSString(rr.Identifier()), nil
     },
 }

@@ -41,8 +41,10 @@ func (lc *HarvestCommand) genListIdentifierArgsFromCommandLine() ListIdentifierA
     var set string
 
     set = *(lc.setName)
-    if set == "\x00" {
+    if set == "" {
         set = lc.Ctx.Provider.Set
+    } else if set == "*" {
+        set = ""
     }
 
     args := ListIdentifierArgs{
@@ -190,7 +192,7 @@ func (lc *HarvestCommand) harvest() {
 }
 
 func (lc *HarvestCommand) Flags(fs *flag.FlagSet) *flag.FlagSet {
-    lc.setName = fs.String("s", "\x00", "Select records from this set")
+    lc.setName = fs.String("s", "", "Select records from this set")
     lc.dryRun = fs.Bool("n", false, "Dry run.  Do not save results.")
     lc.listAndGet = fs.Bool("L", false, "Use list and get instead of ListRecord")
     lc.beforeDate = fs.String("B", "", "Select records that were updated before date (YYYY-MM-DD)")
