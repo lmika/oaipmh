@@ -105,6 +105,7 @@ Supported flags are:
 - `-D <count>`: Maximum number of files to store in each directory.  Defaults to 10000.
 - `-F`: Read the identifiers to harvest from a file, instead of querying the OAI-PMH provider.  The file should be a text file with one identifier per line.  Implies `-L`.
 - `-L`: Retrieve records using separate GetRecord HTTP requests for each identifier.  Slower, but is less prone to errors when harvesting a large number of records.
+- `-N <rs-expr>`: Evaluate the RS expression for each harvested record and use the result as the filename.  If the result of the RS Expression is *false*, the URN will be used (note: this may change in the future).  See *RS Expressions* below.
 - `-W`: Set the number of threads used to download records.  Only applicable when used with either `-L` or `-F`.
 - `-n`: Dry run.  Do not save any records.
 
@@ -130,14 +131,8 @@ Supported flags are:
 
 - `-A`, `-B`, `-c`, `-f`, `-s`: same as the flags of `list`.  These are used to select the records to search.
 
-The query is an expression with the following syntax:
-
-    query       :=  predicate
-    predicate   :=  predicatename "(" argument ")"
-
-Valid predicates are:
-
-- *xpath*: `xp( <xpath> )` - Performs an restricted XPath expression over the metadata and returns the element value that matches the path as the search result.  The XPath expression does not require namespaces.
+The query is an RS Expression which, when evaluated to true, will list the URN in the output.  For more information on RS Expressions,
+see below.
 
 Metadata that matches the search expression will be listed to stdout in the following form:
 
@@ -200,6 +195,36 @@ files will not be recognised by the endpoint.  Record files must
     record1
     record2
 
+
+RS Expressions
+--------------
+
+*Record Search* expressions (or *RS Expressions*) is a very simple expression language which is evaluated over the contents
+of a metadata record.  They are used mainly for the `search` command, but can also be found in other areas of the tool (e.g.
+the `-N` option for the `harvest` command).
+
+These expressions are similar to expressions found in any standard programming language.  A formal grammar of these expressions
+are provided in BNF below:
+
+    expression  :=  fncall | literal
+    fncall      :=  IDENT "(" (expression ("," expression)*)? ")"
+    literal     :=  STRING
+    IDENT       :=  [a-zA-Z0-9]+
+    STRING      :=  \" .* \"
+
+At the moment, only strings are supported.  The expression will be considered *true* if the resulting string of the expression
+is non-empty.
+
+The functions supported by the language are:
+
+Function | Description 
+-------- | -----------
+`concat(strs...)` | Returns a string which is all the individual arguments concatenated together.
+`contains(str, substr)` | Returns *str* if it contains *substr*.  Otherwise, returns the empty string.
+`replace(str, substr, newstr)` | Returns a string with all instances of *substr* within *str* replaced with *newstr*.
+`startsWith(str, prefix)` | Returns *str* if it starts with *prefix*.  Otherwise, returns the empty string.
+`urn()` | Returns the identifier of the record.
+`xp(xpath)` | Performs an restricted XPath expression over the metadata and returns the element value that matches the path as the search result.  The XPath expression does not require name-spaces.
 
 
 Configuration

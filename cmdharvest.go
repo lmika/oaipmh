@@ -221,7 +221,7 @@ func (lc *HarvestCommand) Flags(fs *flag.FlagSet) *flag.FlagSet {
     lc.downloadWorkers = fs.Int("W", 4, "Number of download workers running in parallel")
 
     // Advanded options
-    lc.filenameFilter = fs.String("N", "", "Run filter expression to determine filename")
+    lc.filenameFilter = fs.String("N", "", "Use rs-expression for filename")
 
     return fs
 }
