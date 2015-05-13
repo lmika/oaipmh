@@ -9,6 +9,7 @@ import (
     "text/scanner"
     "strconv"
     "strings"
+    "bytes"
     "fmt"
 
     "launchpad.net/xmlpath"
@@ -243,6 +244,16 @@ func (rsp *recordSearchParser) readString() (string, error) {
 
 // Parses a record match expression
 func ParseRecordMatchExpr(expr string) (*ExprRecordSearcher, error) {
+    ast, err := ParseRSExpr(expr)
+    if err == nil {
+        return &ExprRecordSearcher{ast}, nil
+    } else {
+        return nil, err
+    }
+}
+
+// Parses an RS expresison
+func ParseRSExpr(expr string) (RSExprAst, error) {
     rsp := &recordSearchParser{}
     rsp.scan = new(scanner.Scanner)
     rsp.scan.Init(strings.NewReader(expr))
@@ -251,7 +262,7 @@ func ParseRecordMatchExpr(expr string) (*ExprRecordSearcher, error) {
 
     ast, err := rsp.parseExpr()
     if err == nil {
-        return &ExprRecordSearcher{ast}, nil
+        return ast, nil
     } else {
         return nil, err
     }
@@ -282,6 +293,16 @@ var NATIVE_FUNCTIONS = map[string]RSNativeFunction {
 
         val, _ := path.String(n)
         return RSString(strings.TrimSpace(val)), nil
+    },
+
+    // concat(<strs>...)
+    //      Returns a string with all the other strings concatinated
+    "concat": func(rr *RecordResult, args []RSExprValue) (RSExprValue, error) {
+        buf := new(bytes.Buffer)
+        for _, arg := range args {
+            buf.WriteString(arg.String())
+        }
+        return RSString(buf.String()), nil
     },
 
     // startsWith(<str>, <prefix>)
@@ -318,5 +339,15 @@ var NATIVE_FUNCTIONS = map[string]RSNativeFunction {
     //      Returns the URN of the record
     "urn": func(rr *RecordResult, args []RSExprValue) (RSExprValue, error) {
         return RSString(rr.Identifier()), nil
+    },
+
+    // replace(<str>, <substr>, <new>)
+    //      Replaces all occurances of <substr> found in <str> with <new>
+    "replace": func(rr *RecordResult, args []RSExprValue) (RSExprValue, error) {
+        if (len(args) != 3) {
+            return nil, fmt.Errorf("contains() expects exactly 3 argument")
+        }
+
+        return RSString(strings.Replace(args[0].String(), args[1].String(), args[2].String(), -1)), nil
     },
 }

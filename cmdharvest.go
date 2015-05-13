@@ -26,11 +26,12 @@ type HarvestCommand struct {
     beforeDate          *string
     afterDate           *string
     fromFile            *string
+    filenameFilter      *string
+    filenameFilterAst   RSExprAst
     firstResult         *int
     maxResults          *int
     maxDirSize          *int
     downloadWorkers     *int
-
     dirPrefix           string
     recordCount         int
     lastDirId           int
@@ -63,12 +64,27 @@ func (lc *HarvestCommand) dirName(dirId int) string {
 
 // Saves the record
 func (lc *HarvestCommand) saveRecordToDir(dirId int, res *RecordResult) {
-    id := res.Identifier()
     dir := lc.dirName(dirId)
+
+    // The filename to use.  If there's a filter, execute it and use the returned string
+    // as the filename.  Otherwise, simply use the records URN
+    var resId = res.Identifier()
+    var filename string = resId
+
+    if lc.filenameFilterAst != nil {
+        res, err := lc.filenameFilterAst.Evaluate(res)
+        if (err == nil) && (res != nil) && (res.Bool()) {
+            filename = res.String()
+        } else if (err != nil) {
+            log.Printf("%s: error in filename filter, using the URN: %s", resId, err.Error())
+        } else {
+            log.Printf("%s: warn: filename filter returned false, using the URN", resId)
+        }
+    }
 
     // Escape filenames to avoid invalid characters such as '/' causing
     // potential file naming problems.
-    fileBaseName := EscapeIdForFilename(id)
+    fileBaseName := EscapeIdForFilename(filename)
     if fileBaseName == "" {
         log.Println("warn: using file basename '__empty__' for record with an empty identifier")
         fileBaseName = "__empty__"
@@ -204,10 +220,22 @@ func (lc *HarvestCommand) Flags(fs *flag.FlagSet) *flag.FlagSet {
     lc.compressDirs = fs.Bool("C", false, "Compress directories once they are full")
     lc.downloadWorkers = fs.Int("W", 4, "Number of download workers running in parallel")
 
+    // Advanded options
+    lc.filenameFilter = fs.String("N", "", "Run filter expression to determine filename")
+
     return fs
 }
 
 func (lc *HarvestCommand) Run(args []string) {
+    // Compile the filename filter if there is one
+    if *lc.filenameFilter != "" {
+        var err error
+        lc.filenameFilterAst, err = ParseRSExpr(*lc.filenameFilter)
+        if err != nil {
+            log.Fatal("Error in filename filter: ", err)
+        }
+    }
+
     lc.lastDirId = 1
     lc.dirPrefix = time.Now().Format("20060102T150405")
     lc.harvest()
