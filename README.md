@@ -33,7 +33,7 @@ is one of the following commands listed below.
 
 ### Global Flags
 
-- `-d`: Enable debugging output.
+- `-d`: Enable debugging output.  Use `-dd` to increase the verbosity.
 - `-p <prefix>`: Set the OAI-PMH prefix.  Default is "iso19139".
 - `-P`: List the set of provider aliases, then exit.
 - `-V`: Display the version number, then exit.
@@ -42,6 +42,11 @@ Commands
 --------
 
 The tool supports the following commands.
+
+### help
+
+Show a brief description of each command.  Use `help <command>` to show usage details of a specific
+command.
 
 ### sets
 
@@ -65,8 +70,10 @@ Supported flags are:
 - `-f <number>`: The first result to return.  For example: `-f 3` will start listing from the 3rd result.
 - `-l`: Display a detailed listing.  This will also display deleted identifiers, and will produce a summary of the number of metadata records to
     standard error.
-- `-R`: Use the ListRecords verb instead of ListIdentifiers verb.  This is useful mainly for testing.
 - `-s`: Specify the set to retrieve.  Use '*' to list all sets.  When not specified, the "default set" is used if one is defined (see Configuration).
+- `-d`: Show deleted records in the listing, along with active ones.
+- `-D`: Only show deleted records.  Active ones will be hidden.
+- `-R`: Use the ListRecords verb instead of ListIdentifiers verb.  This is useful mainly for testing.
 
 By default only active identifiers are displayed.  To view deleted identifiers, use the `-l` flag.
 

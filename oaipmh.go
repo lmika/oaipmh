@@ -94,9 +94,8 @@ func main() {
 
     if (debugLevel >= 0) && (ctx.Session != nil) {
         ctx.LogLevel = LogLevel(debugLevel)
+        ctx.Session.SetDebug(debugLevel)
     }
-
-    ctx.Session.SetDebug(debugLevel)
 
     // Run the command
     command.Run()
