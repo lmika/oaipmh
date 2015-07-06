@@ -15,11 +15,12 @@ import (
 )
 
 const APP_NAME string = "oaipmh-viewer"
-const APP_VERSION string = "1.2"
+const APP_VERSION string = "1.3"
 
 // Flags
 var prefix *string = flag.String("p", "iso19139", "The record prefix to retrieve")
-var debug *bool = flag.Bool("d", false, "Display debugging output")
+var debug *bool = flag.Bool("d", false, "Show debug messages")
+var debugLots *bool = flag.Bool("dd", false, "Show trace messages")
 var displayVersion *bool = flag.Bool("V", false, "Display version and exit")
 var listProvidersFlag *bool = flag.Bool("P", false, "List providers and exit")
 
@@ -84,10 +85,18 @@ func main() {
         ctx.Session = NewOaipmhSession(ctx.Provider.Url, *prefix)
     }
 
-    if (*debug) && (ctx.Session != nil) {
-        ctx.Debug = true
-        ctx.Session.SetDebug(true)
+    debugLevel := 0
+    if (*debugLots) {
+        debugLevel = 2
+    } else if (*debug) {
+        debugLevel = 1
     }
+
+    if (debugLevel >= 0) && (ctx.Session != nil) {
+        ctx.LogLevel = LogLevel(debugLevel)
+    }
+
+    ctx.Session.SetDebug(debugLevel)
 
     // Run the command
     command.Run()

@@ -115,7 +115,7 @@ func (lc *HarvestCommand) closeDir(dirId int) {
         base := path.Base(dir)
         parent := path.Dir(dir)
 
-        if (lc.Ctx.Debug) {
+        if (lc.Ctx.LogLevel >= TraceLogLevel) {
             log.Printf("Compressing %s -> %s", base, dir + ".zip")
         }
 
@@ -136,7 +136,7 @@ func (lc *HarvestCommand) saveRecord(res *RecordResult) {
         lc.lastDirId = dirId
     }
 
-    if (lc.Ctx.Debug) {
+    if (lc.Ctx.LogLevel >= DebugLogLevel) {
         log.Printf("%8d  %s\n", lc.recordCount, res.Identifier())
     }
     if ((lc.recordCount % 1000) == 0) {

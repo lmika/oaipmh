@@ -3,8 +3,17 @@ package main
 // Const
 const DateFormat string = "2006-01-02"
 
+type LogLevel     int
+const (
+    NoLogLevel     LogLevel     = iota
+    DebugLogLevel               = iota
+    TraceLogLevel               = iota
+)
+
 type Context struct {
-    Debug           bool
+    // The logging level
+    LogLevel        LogLevel
+
     Session         *OaipmhSession
 
     Config          *Config

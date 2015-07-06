@@ -66,9 +66,15 @@ func NewOaipmhSession(url, prefix string) *OaipmhSession {
     return &OaipmhSession{c, url, prefix, func(string) { }}
 }
 
-// Sets the debugging state
-func (op *OaipmhSession) SetDebug(debug bool) {
-    op.client.Debug = debug
+// Sets the debugging level (0 = none, 1 = request, 2 = request/response)
+func (op *OaipmhSession) SetDebug(debug int) {
+    if (debug <= 0) {
+        op.client.Debug = oaipmh.NoDebug
+    } else if (debug == 1) {
+        op.client.Debug = oaipmh.ReqDebug
+    } else if (debug >= 2) {
+        op.client.Debug = oaipmh.ReqRespBodyDebug
+    }
 }
 
 // Stifle error messages which indicate no more results.  This is so that the user doesn't see them.

@@ -4,6 +4,10 @@
 package oaipmh
 
 import (
+    "io"
+    "io/ioutil"
+    "bufio"
+    "bytes"
     "log"
     "encoding/xml"
     "fmt"
@@ -41,10 +45,26 @@ type ListArgs struct {
 }
 
 
+// The level of debugging the client will log
+type DebugLevel     int
+const (
+    // Show no debugging
+    NoDebug     DebugLevel      = iota
+
+    // Show the method and URL of the request
+    ReqDebug                    = iota
+
+    // Like ReqDebug, but also show the return code of the response
+    ReqRespDebug                = iota
+
+    // Like ReqRespDebug, but also show the full body of the response
+    ReqRespBodyDebug            = iota
+)
+
 // An OAI-PMH client
 type Client struct {
-    // If true, will display debug information
-    Debug           bool
+    // Sets the debug level
+    Debug           DebugLevel
 
     url             *url.URL
 }
@@ -57,7 +77,7 @@ func NewClient(providerUrl string) (*Client, error) {
         return nil, err
     }
 
-    return &Client{false, u}, nil
+    return &Client{NoDebug, u}, nil
 }
 
 // Fetches an OAI-PMH request and stores it within the provider response variable.  Returns
@@ -65,7 +85,7 @@ func NewClient(providerUrl string) (*Client, error) {
 func (c *Client) Fetch(verb string, vals url.Values, res *OaipmhResponse) error {
     vals.Set("verb", verb)
 
-    if (c.Debug) {
+    if (c.Debug >= ReqDebug) {
         log.Printf(">> POST %s\n", c.url.String() + "?" + vals.Encode())
     }
 
@@ -74,15 +94,21 @@ func (c *Client) Fetch(verb string, vals url.Values, res *OaipmhResponse) error 
     if err != nil {
         return err
     }
-    defer resp.Body.Close()
 
     // Expect a 200 response
     if resp.StatusCode != 200 {
         return fmt.Errorf("HTTP error: %v\n", resp.Status)
+    }    
+    if (c.Debug >= ReqRespDebug) {
+        log.Printf("<< %d %s\n", resp.StatusCode, resp.Status)
     }
 
+    // Get response body
+    responseBody := c.readResponseBody(resp)
+    defer responseBody.Close()
+
     // Marshal the response into the provided 'res'
-    dec := xml.NewDecoder(resp.Body)
+    dec := xml.NewDecoder(responseBody)
     err = dec.Decode(res)
     if err != nil {
         return err
@@ -94,6 +120,31 @@ func (c *Client) Fetch(verb string, vals url.Values, res *OaipmhResponse) error 
     }
 
     return nil
+}
+
+// Returns the body of the response.  If debugging is enabled, the response is first
+// buffered, then dumped to the log.  The response will be closed by the caller
+func (c *Client) readResponseBody(res *http.Response) io.ReadCloser {
+    if !(c.Debug >= ReqRespBodyDebug) {
+        return res.Body
+    }
+
+    defer res.Body.Close()
+
+    // Read the response to a buffer
+    respBuffer := new(bytes.Buffer)
+    respBuffer.ReadFrom(res.Body)
+
+    respBytes := respBuffer.Bytes()
+
+    // Dump the response to the log
+    scanner := bufio.NewScanner(bytes.NewBuffer(respBytes))
+    for scanner.Scan() {
+        log.Printf("<< res: %s\n", scanner.Text())
+    }
+
+    // And return it as a buffer that can be consumed by the client
+    return ioutil.NopCloser(bytes.NewBuffer(respBytes))
 }
 
 // Returns the list of sets
