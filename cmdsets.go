@@ -4,6 +4,7 @@ import (
     "fmt"
     "strings"
     "flag"
+    "bufio"
 
     "github.com/lmika-bom/oaipmh/client"
 )
@@ -25,17 +26,21 @@ func (lc *SetsCommand) Flags(fs *flag.FlagSet) *flag.FlagSet {
 func (lc *SetsCommand) Run(args []string) {
     lc.Ctx.Session.ListSets(0, -1, func(res oaipmh.OaipmhSet) bool {
         if (*(lc.flagDetailed)) {
-            fmt.Printf("Name: %s\nSpec: %s\n\n", res.Spec, res.Name)
+            fmt.Printf("%s: %s\n", res.Spec, res.Name)
             descrLines := strings.Split(res.Descr.OaiDC.Descr, "\n")
             for _, v := range descrLines {
                 v = strings.Trim(v, " \n\t")
                 if (v != "") {
-                    fmt.Printf("%s\n", v)
+                    fmt.Println()
+                    scanner := bufio.NewScanner(strings.NewReader(v))
+                    for scanner.Scan() {
+                        fmt.Printf("   %s\n", scanner.Text())
+                    }
+                    fmt.Println()
                 }
             }
-            fmt.Println("---")
         } else {
-            fmt.Printf("%s\n", res.Name)
+            fmt.Printf("%s\n", res.Spec)
         }
         return true
     })

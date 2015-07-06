@@ -13,6 +13,7 @@ import (
     "fmt"
     "net/http"
     "net/url"
+    "strings"
     "time"
 )
 
@@ -87,6 +88,11 @@ func (c *Client) Fetch(verb string, vals url.Values, res *OaipmhResponse) error 
 
     if (c.Debug >= ReqDebug) {
         log.Printf(">> POST %s\n", c.url.String() + "?" + vals.Encode())
+        if (c.Debug >= ReqRespBodyDebug) {
+            for key, vs := range vals {
+                log.Printf(">> param: %s = %s", key, strings.Join(vs, "; "))
+            }
+        }
     }
 
     // Post the form
@@ -95,13 +101,14 @@ func (c *Client) Fetch(verb string, vals url.Values, res *OaipmhResponse) error 
         return err
     }
 
+    if (c.Debug >= ReqRespDebug) {
+        log.Printf("<< %s\n", resp.Status)
+    }
+
     // Expect a 200 response
     if resp.StatusCode != 200 {
         return fmt.Errorf("HTTP error: %v\n", resp.Status)
     }    
-    if (c.Debug >= ReqRespDebug) {
-        log.Printf("<< %d %s\n", resp.StatusCode, resp.Status)
-    }
 
     // Get response body
     responseBody := c.readResponseBody(resp)
@@ -140,7 +147,7 @@ func (c *Client) readResponseBody(res *http.Response) io.ReadCloser {
     // Dump the response to the log
     scanner := bufio.NewScanner(bytes.NewBuffer(respBytes))
     for scanner.Scan() {
-        log.Printf("<< res: %s\n", scanner.Text())
+        log.Printf("<< body: %s\n", scanner.Text())
     }
 
     // And return it as a buffer that can be consumed by the client
