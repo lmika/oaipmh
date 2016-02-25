@@ -23,6 +23,7 @@ var debug *bool = flag.Bool("d", false, "Show debug messages")
 var debugLots *bool = flag.Bool("dd", false, "Show trace messages")
 var displayVersion *bool = flag.Bool("V", false, "Display version and exit")
 var listProvidersFlag *bool = flag.Bool("P", false, "List providers and exit")
+var useGetFlag *bool = flag.Bool("G", false, "Use HTTP GET instead of HTTP POST")
 
 
 // Die with an error message
@@ -96,6 +97,7 @@ func main() {
         ctx.LogLevel = LogLevel(debugLevel)
         ctx.Session.SetDebug(debugLevel)
     }
+    ctx.Session.SetUseGet(*useGetFlag)
 
     // Run the command
     command.Run()

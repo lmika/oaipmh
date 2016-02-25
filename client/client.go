@@ -67,6 +67,9 @@ type Client struct {
     // Sets the debug level
     Debug           DebugLevel
 
+    // Use the GET method instead of POST
+    UseGet          bool
+
     url             *url.URL
 }
 
@@ -78,7 +81,7 @@ func NewClient(providerUrl string) (*Client, error) {
         return nil, err
     }
 
-    return &Client{NoDebug, u}, nil
+    return &Client{NoDebug, false, u}, nil
 }
 
 // Fetches an OAI-PMH request and stores it within the provider response variable.  Returns
@@ -87,7 +90,11 @@ func (c *Client) Fetch(verb string, vals url.Values, res *OaipmhResponse) error 
     vals.Set("verb", verb)
 
     if (c.Debug >= ReqDebug) {
-        log.Printf(">> POST %s\n", c.url.String() + "?" + vals.Encode())
+        if c.UseGet {
+            log.Printf(">> GET %s\n", c.url.String() + "?" + vals.Encode())
+        } else {
+            log.Printf(">> POST %s\n", c.url.String() + "?" + vals.Encode())            
+        }
         if (c.Debug >= ReqRespBodyDebug) {
             for key, vs := range vals {
                 log.Printf(">> param: %s = %s", key, strings.Join(vs, "; "))
@@ -96,7 +103,17 @@ func (c *Client) Fetch(verb string, vals url.Values, res *OaipmhResponse) error 
     }
 
     // Post the form
-    resp, err := http.PostForm(c.url.String(), vals)
+    var resp *http.Response
+    var err error
+
+    if c.UseGet {
+        urlWithParams, _ := url.Parse(c.url.String())
+        urlWithParams.RawQuery = vals.Encode()
+
+        resp, err = http.Get(urlWithParams.String())
+    } else {
+        resp, err = http.PostForm(c.url.String(), vals)
+    }
     if err != nil {
         return err
     }

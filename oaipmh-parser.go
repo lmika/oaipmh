@@ -77,6 +77,11 @@ func (op *OaipmhSession) SetDebug(debug int) {
     }
 }
 
+// Set whether or not to use HTTP GET
+func (op *OaipmhSession) SetUseGet(useGet bool) {
+    op.client.UseGet = useGet
+}
+
 // Stifle error messages which indicate no more results.  This is so that the user doesn't see them.
 func (op *OaipmhSession) stifleNoResultErrors(e error) error {
     switch err := e.(type) {
