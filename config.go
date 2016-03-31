@@ -6,7 +6,7 @@ import (
     "os/user"
     "path/filepath"
 
-    "code.google.com/p/gcfg"
+    "github.com/scalingdata/gcfg"
 )
 
 
