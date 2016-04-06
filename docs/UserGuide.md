@@ -7,7 +7,7 @@ Usage
 
     oaipmh [GLOBAL_FLAGS] PROVIDER COMMAND [ARGUMENTS]
 
-Providers can either be a URL to a remote provider, or a provider alias (see Configuration below).  Command
+Providers can either be a URL to a remote provider, or a [provider alias](#Provider Aliases) (see Configuration below).  Command
 is one of the following commands listed below.
 
 ### Global Flags
@@ -96,7 +96,7 @@ Supported flags are:
 - `-D <count>`: Maximum number of files to store in each directory.  Defaults to 10000.
 - `-F`: Read the identifiers to harvest from a file, instead of querying the OAI-PMH provider.  The file should be a text file with one identifier per line.  Implies `-L`.
 - `-L`: Retrieve records using separate GetRecord HTTP requests for each identifier.  Slower, but is less prone to errors when harvesting a large number of records.
-- `-N <rs-expr>`: Evaluate the RS expression for each harvested record and use the result as the filename.  If the result of the RS Expression is *false*, the URN will be used (note: this may change in the future).  See *RS Expressions* below.
+- `-N <rs-expr>`: Evaluate the [RS expression](#RS Expressions) for each harvested record and use the result as the filename.  If the result of the RS Expression is *false*, the URN will be used (note: this may change in the future).
 - `-W`: Set the number of threads used to download records.  Only applicable when used with either `-L` or `-F`.
 - `-n`: Dry run.  Do not save any records.
 
@@ -122,7 +122,7 @@ Supported flags are:
 
 - `-A`, `-B`, `-c`, `-f`, `-s`: same as the flags of `list`.  These are used to select the records to search.
 
-The query is an RS Expression which, when evaluated to true, will list the URN in the output.  For more information on RS Expressions,
+The query is an [RS expression](#RS Expressions) which, when evaluated to true, will list the URN in the output.  For more information on RS Expressions,
 see below.
 
 Metadata that matches the search expression will be listed to stdout in the following form:
