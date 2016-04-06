@@ -13,7 +13,7 @@ import (
     "strings"
     "time"
 
-    "gopkg.in/gcfg.v1"
+    "github.com/scalingdata/gcfg"
 
     "github.com/lmika-bom/oaipmh/client"
 )
