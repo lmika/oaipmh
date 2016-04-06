@@ -20,19 +20,32 @@ type GetCommand struct {
     Ctx             *Context
     header          *bool
     test            *bool
+    extProcessName  *string
     separator       *string
     count           int
+
+    extProcess      *ExtProcess
 }
 
 func (gc *GetCommand) Flags(fs *flag.FlagSet) *flag.FlagSet {
     gc.header = fs.Bool("H", false, "Display record header")
     gc.test = fs.Bool("t", false, "Test that the record can be retrieved")
     gc.separator = fs.String("s", "====", "Record separator")
+    gc.extProcessName = fs.String("p", "", "Invoke the external process using the metadata records")
 
     return fs
 }
 
 func (gc *GetCommand) Run(args []string) {
+    if *(gc.extProcessName) != "" {
+        extProcess, hasExtProcess := gc.Ctx.Config.ExtProcess[*(gc.extProcessName)]
+        if !hasExtProcess {
+            log.Fatalf("Error: No external process with name '%s' defined", *gc.extProcessName)
+        }
+
+        gc.extProcess = extProcess
+    }
+
     for _, id := range args {
         gc.eachId(id, func(urn string) {
             gc.displayRecord(urn)
@@ -78,6 +91,10 @@ func (gc *GetCommand) displayRecord(id string) {
     if (err == nil) {
         if *(gc.test) {
             fmt.Printf("+ %s\n", resp.Header.Identifier)
+        } else if gc.extProcess != nil {
+            if err := gc.extProcess.invokeWithRecord(resp) ; err != nil {
+                log.Fatalf("Record '%s': external process - %s", resp.Header.Identifier, err.Error())
+            }
         } else if *(gc.header) {
             fmt.Printf("Id:\t%s\n", resp.Header.Identifier)
             fmt.Printf("Date:\t%s\n", resp.Header.DateStamp.String())

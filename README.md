@@ -92,12 +92,16 @@ Supported flags are:
 
 - `-H`: Display the header of the record instead of the record itself.
 - `-S`: Specify the separator line to use when returning multiple records.
+- `-p`: Run an external process with the metadata record.  See "External Processes" in the configuration section.
 - `-t`: Test for the presence of records by getting them.  This will display the record identifiers with either a `+`
     indicating that the record was retrieved successfully, or a `-` if there was an error of some sort.
 
 Following the flags is a list of identifiers to retrieve.  When multiple records are returned, they will be separated by a
 separator, line with will either be the argument to `-S`, or 4 equal (`=`) signs.  Identifiers can be read from a file
 by using `@filename`, which should be a text file with one identifier per line.  To read identifiers from STDIN, use `@-`.
+
+When using `-p`, the external process will be invoked with each metadata record.  The output of the command will be
+displayed to stdout.
 
 ### harvest
 
@@ -257,3 +261,35 @@ Configuration values to use:
 - *url*: The URL of the OAI-PMH provider.
 - *set*: The default set to use.  When `-s` is not specified in commands that use it (like `list` or `harvest`), this
 set will be used instead.
+
+### External Processes
+
+External processes can be used to configure common tools which consume metadata records.  These can be
+used with commands like `get` which will run the metadata record through the tool, instead of displaying them.
+
+    [extprocess "<name>"]
+    cmd=<cmd>
+    tempfile=<tempfile>
+
+Configuration values to use:
+
+- *name*: The name of the external process.
+- *cmd*: The command to execute.
+- *tempfile*: If "true", the record content will be written to a temporary file.  Otherwise, the content will be 
+    piped to the command via stdin.
+
+The command will be executed within the configured shell of the current user as determined by the SHELL
+environment variable.  Note that the shell must support the `-c` switch in order to accept *cmd* as an
+argument.  If *tempfile* is set to "false", the record content itself is piped to the command via
+stdin.  Setting *tempfile* to true will have the record content written to a temporary file prior
+to invoking the command.
+
+Information about the current record is exposed to the subprocess through environment variables:
+
+- *urn*: The record identifier
+- *file*: The file containing the record content, if *tempfile* is set to true.
+
+How the output of the command is used will depend on the command invoking the subprocess.  For example,
+the `get` command will simply forward the output to stdout.  Anything written to stderr will always be
+forward to stderr of `oaipmh`.  A command returning a non-zero return code will show an error and will
+usually terminate processing of the command.

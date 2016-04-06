@@ -80,6 +80,12 @@ func main() {
         }
     }
 
+    // If the provider Url is "help", display the usage
+    if *providerUrl == "" {
+        command.Usage()
+        os.Exit(1)
+    }
+
     // Create the OAI-PMH session
     ctx.Provider = ctx.Config.LookupProvider(*providerUrl)
     if (ctx.Provider != nil) {
