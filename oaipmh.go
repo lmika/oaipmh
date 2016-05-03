@@ -14,8 +14,8 @@ import (
     "github.com/lmika/command"
 )
 
-const APP_NAME string = "oaipmh-viewer"
-const APP_VERSION string = "1.3"
+const APP_NAME string = "oaipmh"
+const APP_VERSION string = "1.4"
 
 // Flags
 var prefix *string = flag.String("p", "iso19139", "The record prefix to retrieve")
