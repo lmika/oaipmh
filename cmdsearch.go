@@ -34,7 +34,7 @@ type SearchCommand struct {
 
 // Callbacks for the HarvesterObserver
 
-func (sc *SearchCommand) OnRecord(recordResult *RecordResult) {
+func (sc *SearchCommand) OnRecord(recordResult *RecordResult) {    
     hasRes, res, err := sc.matchNode.SearchRecord(recordResult)
     if (err != nil) {
         log.Printf("Record %s: Error: %s\n", recordResult.Identifier(), err.Error())
