@@ -8,11 +8,11 @@ Installing
 
 If you have [go](http://golang.org/):
 
-1. Run `go get github.com/lmika-bom/oaipmh`
+1. Run `go get github.com/lmika/oaipmh`
 
 To install the binary:
 
-1. Download the release from [here](https://github.com/lmika-bom/oaipmh/releases/latest)
+1. Download the release from [here](https://github.com/lmika/oaipmh/releases/latest)
 2. Unzip the archive
 3. Add `oaipmh` to your PATH
 
