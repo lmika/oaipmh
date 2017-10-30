@@ -43,7 +43,7 @@ See the [User Guide](docs/UserGuide.md) for more details.
 Licence
 -------
 
-Copyright (c) 2016 Leon Mika (Australian Bureau of Meteorology)
+Copyright (c) 2017 Leon Mika (Australian Bureau of Meteorology)
 
 Permission is hereby granted, free of charge, to any person obtaining a copy of this software and
 associated documentation files (the "Software"), to deal in the Software without restriction, including
